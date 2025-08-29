@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "componentDoc.basePath": "./example-docs",
+    "componentDoc.mappingRule": {
+      "Button": "Button.md",
+      "Input": "Input.md",
+      "Card": "Card.md",
+      "/(.*)/": "$1.md"
+    },
+    "componentDoc.cacheTimeout": 300000
+  }
+}

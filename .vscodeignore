@@ -1,0 +1,44 @@
+# 开发文件
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+.yarnrc
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
+
+# 测试文件
+test/**
+**/*.test.ts
+**/*.test.js
+
+# 文档和示例文件
+TESTING.md
+USAGE.md
+extension - VSCode.md
+test-component.jsx
+test-workspace.code-workspace
+example-docs/**
+
+# 构建工具和配置
+webpack.config.js
+.webpack.config.js
+**/*.webpack.config.js
+.augment/**
+
+# 依赖管理优化
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/*.md
+node_modules/**/*.txt
+node_modules/**/LICENSE*
+node_modules/**/CHANGELOG*
+node_modules/**/README*
+
+# 临时文件
+**/*.log
+.DS_Store
+Thumbs.db

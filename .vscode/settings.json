@@ -1,0 +1,10 @@
+{
+  "componentDoc.basePath": "D:/Front_end/前端项目/shixi/ouryun-design/docs/zh-CN/components/ouryun-plus/常用组件/",
+  "componentDoc.mappingRule": {
+    "Button": "Button.md",
+    "Input": "Input.md",
+    "Card": "Card.md",
+    "/(.*)/": "$1.md"
+  },
+  "componentDoc.cacheTimeout": 300000
+}

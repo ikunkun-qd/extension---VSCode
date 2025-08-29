@@ -1,0 +1,101 @@
+{
+  "name": "component-doc-helper",
+  "displayName": "组件智能文档提示",
+  "description": "为前端组件库提供智能文档提示和侧边栏文档视图",
+  "version": "0.0.1",
+  "publisher": "component-doc-team",
+  "author": {
+    "name": "Component Doc Team"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/component-doc-team/component-doc-helper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/component-doc-team/component-doc-helper/issues"
+  },
+  "homepage": "https://github.com/component-doc-team/component-doc-helper#readme",
+  "keywords": [
+    "vscode",
+    "extension",
+    "component",
+    "documentation",
+    "frontend",
+    "react",
+    "vue",
+    "typescript"
+  ],
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:vue"
+  ],
+  "main": "./out/extension.js",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "componentDoc.showDocumentation",
+        "title": "显示组件文档"
+      },
+      {
+        "command": "componentDoc.openSettings",
+        "title": "打开配置界面",
+        "category": "组件文档"
+      }
+    ],
+    "configuration": {
+      "title": "组件文档助手",
+      "properties": {
+        "componentDoc.basePath": {
+          "type": "string",
+          "default": "",
+          "description": "组件库文档的根路径（本地路径或远程URL）"
+        },
+        "componentDoc.mappingRule": {
+          "type": "object",
+          "default": {},
+          "description": "组件名与文档文件的映射规则"
+        },
+        "componentDoc.cacheTimeout": {
+          "type": "number",
+          "default": 300000,
+          "description": "远程文档缓存过期时间（毫秒）"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "markdown-it": "^13.0.1"
+  }
+}

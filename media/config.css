@@ -1,0 +1,268 @@
+/* 配置界面样式 */
+.container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+h1 {
+    color: var(--vscode-foreground);
+    margin-bottom: 30px;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--vscode-foreground);
+}
+
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--vscode-input-border);
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+.help-text {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.validation-message {
+    margin-top: 4px;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+
+.validation-message.valid {
+    color: var(--vscode-terminal-ansiGreen);
+    background-color: rgba(0, 255, 0, 0.1);
+}
+
+.validation-message.invalid {
+    color: var(--vscode-errorForeground);
+    background-color: var(--vscode-inputValidation-errorBackground);
+}
+
+/* 映射规则样式 */
+.mapping-container {
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.mapping-header {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 10px;
+    padding: 12px;
+    background-color: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-input-border);
+    font-weight: 600;
+    color: var(--vscode-foreground);
+}
+
+.mapping-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.mapping-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 10px;
+    padding: 12px;
+    border-bottom: 1px solid var(--vscode-input-border);
+    align-items: center;
+}
+
+.mapping-row:last-child {
+    border-bottom: none;
+}
+
+.mapping-row:hover {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.component-name {
+    font-family: var(--vscode-editor-font-family);
+    font-weight: 500;
+    color: var(--vscode-foreground);
+}
+
+.file-path {
+    font-family: var(--vscode-editor-font-family);
+    color: var(--vscode-descriptionForeground);
+    word-break: break-all;
+}
+
+.mapping-add {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 10px;
+    padding: 12px;
+    background-color: var(--vscode-editor-background);
+    border-top: 1px solid var(--vscode-input-border);
+}
+
+.mapping-add input {
+    margin: 0;
+}
+
+/* 按钮样式 */
+button {
+    padding: 8px 16px;
+    border: 1px solid var(--vscode-button-border);
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+button:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+button.primary {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+button.primary:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.remove-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: 1px solid var(--vscode-button-border);
+}
+
+.remove-btn:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* 表单操作区域 */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--vscode-input-border);
+}
+
+/* 消息容器 */
+.message-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 400px;
+}
+
+.message {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease-out;
+}
+
+.message.success {
+    background-color: var(--vscode-terminal-ansiGreen);
+    color: var(--vscode-editor-background);
+}
+
+.message.error {
+    background-color: var(--vscode-errorForeground);
+    color: var(--vscode-editor-background);
+}
+
+.message.info {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .mapping-header,
+    .mapping-row,
+    .mapping-add {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .message-container {
+        position: static;
+        margin-top: 20px;
+    }
+}
+
+/* 滚动条样式 */
+.mapping-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.mapping-list::-webkit-scrollbar-track {
+    background: var(--vscode-scrollbarSlider-background);
+}
+
+.mapping-list::-webkit-scrollbar-thumb {
+    background: var(--vscode-scrollbarSlider-background);
+    border-radius: 4px;
+}
+
+.mapping-list::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-hoverBackground);
+}
