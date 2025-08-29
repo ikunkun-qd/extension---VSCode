@@ -55,8 +55,62 @@
         "command": "componentDoc.openSettings",
         "title": "打开配置界面",
         "category": "组件文档"
+      },
+      {
+        "command": "componentDoc.toggleSettingsPanel",
+        "title": "切换设置面板",
+        "category": "组件文档",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "componentDoc.refreshSettings",
+        "title": "刷新设置",
+        "category": "组件文档",
+        "icon": "$(refresh)"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "componentDocSettings",
+          "name": "组件文档设置",
+          "when": "componentDoc.settingsPanelVisible"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "componentDoc",
+          "title": "组件文档",
+          "icon": "$(book)"
+        }
+      ]
+    },
+    "views": {
+      "componentDoc": [
+        {
+          "id": "componentDocSettings",
+          "name": "配置设置",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "componentDoc.refreshSettings",
+          "when": "view == componentDocSettings",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "componentDoc.toggleSettingsPanel",
+          "when": "true"
+        }
+      ]
+    },
     "configuration": {
       "title": "组件文档助手",
       "properties": {

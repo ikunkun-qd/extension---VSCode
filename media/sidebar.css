@@ -1,0 +1,398 @@
+/* 侧边栏设置面板样式 */
+.sidebar-container {
+  padding: 8px;
+  font-size: 12px;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--vscode-sideBar-background);
+}
+
+.header {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: linear-gradient(
+    135deg,
+    var(--vscode-button-background),
+    var(--vscode-button-hoverBackground)
+  );
+  border-radius: 6px;
+  text-align: center;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-button-foreground);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.section {
+  margin-bottom: 16px;
+  padding: 8px;
+  background-color: var(--vscode-editor-background);
+  border-radius: 6px;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.section h3 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 模板网格 */
+.template-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.template-btn {
+  padding: 6px 4px;
+  border: 1px solid var(--vscode-button-border);
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.template-btn:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.template-btn.active {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: var(--vscode-focusBorder);
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+.template-btn.active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--vscode-focusBorder);
+}
+
+/* 输入组 */
+.input-group {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-input-border);
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.icon-btn {
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-button-border);
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  min-width: 32px;
+}
+
+.icon-btn:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+/* 验证消息 */
+.validation-msg {
+  font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  margin-top: 4px;
+}
+
+.validation-msg.valid {
+  color: var(--vscode-terminal-ansiGreen);
+  background-color: rgba(0, 255, 0, 0.1);
+}
+
+.validation-msg.invalid {
+  color: var(--vscode-errorForeground);
+  background-color: rgba(255, 0, 0, 0.1);
+}
+
+/* 映射列表 */
+.mapping-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.mapping-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--vscode-input-border);
+}
+
+.mapping-item:last-child {
+  border-bottom: none;
+}
+
+.mapping-item:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.mapping-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.component-name {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  margin-bottom: 2px;
+}
+
+.file-path {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  word-break: break-all;
+}
+
+.remove-btn {
+  padding: 4px 6px;
+  border: 1px solid var(--vscode-button-border);
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  margin-left: 6px;
+}
+
+.remove-btn:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.empty-state {
+  padding: 16px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  font-size: 11px;
+}
+
+/* 添加映射 */
+.add-mapping {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 4px;
+}
+
+.add-mapping input {
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-input-border);
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.add-btn {
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-button-border);
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.add-btn:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+/* 预览结果 */
+.preview-result {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  background-color: var(--vscode-editor-background);
+  min-height: 40px;
+  font-size: 11px;
+}
+
+.preview-success .preview-title {
+  font-weight: 500;
+  color: var(--vscode-terminal-ansiGreen);
+  margin-bottom: 4px;
+}
+
+.preview-error .preview-title {
+  font-weight: 500;
+  color: var(--vscode-errorForeground);
+  margin-bottom: 4px;
+}
+
+.preview-path {
+  color: var(--vscode-descriptionForeground);
+  word-break: break-all;
+  margin-bottom: 6px;
+}
+
+.preview-content {
+  background-color: var(--vscode-textCodeBlock-background);
+  padding: 6px;
+  border-radius: 3px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.preview-message {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* 缓存设置 */
+.section input[type="number"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-input-border);
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+/* 操作按钮 */
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.primary-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--vscode-button-border);
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.primary-btn:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.secondary-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--vscode-button-border);
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.secondary-btn:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* 消息容器 */
+.message-container {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  max-width: 200px;
+}
+
+.message {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.message.success {
+  background-color: var(--vscode-terminal-ansiGreen);
+  color: var(--vscode-editor-background);
+}
+
+.message.error {
+  background-color: var(--vscode-errorForeground);
+  color: var(--vscode-editor-background);
+}
+
+.message.info {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 滚动条样式 */
+.mapping-list::-webkit-scrollbar,
+.sidebar-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mapping-list::-webkit-scrollbar-track,
+.sidebar-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mapping-list::-webkit-scrollbar-thumb,
+.sidebar-container::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background);
+  border-radius: 3px;
+}
+
+.mapping-list::-webkit-scrollbar-thumb:hover,
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
+}

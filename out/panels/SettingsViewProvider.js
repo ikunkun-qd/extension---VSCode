@@ -23,46 +23,28 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConfigurationPanel = void 0;
+exports.SettingsViewProvider = void 0;
 const vscode = __importStar(require("vscode"));
 /**
- * 配置面板
- * 提供可视化的配置管理界面
+ * 侧边栏设置面板提供器
+ * 提供一个可切换显示/隐藏的设置面板
  */
-class ConfigurationPanel {
-    static createOrShow(extensionUri, configManager) {
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
-        // 如果已经有面板，则显示它
-        if (ConfigurationPanel.currentPanel) {
-            ConfigurationPanel.currentPanel._panel.reveal(column);
-            return;
-        }
-        // 否则，创建新面板
-        const panel = vscode.window.createWebviewPanel('componentDocConfiguration', '组件文档配置', column || vscode.ViewColumn.One, {
+class SettingsViewProvider {
+    constructor(_extensionUri, configManager) {
+        this._extensionUri = _extensionUri;
+        this._configManager = configManager;
+    }
+    resolveWebviewView(webviewView, context, _token) {
+        this._view = webviewView;
+        webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [
-                vscode.Uri.joinPath(extensionUri, 'media'),
-                vscode.Uri.joinPath(extensionUri, 'out', 'compiled')
+                vscode.Uri.joinPath(this._extensionUri, 'media')
             ]
-        });
-        ConfigurationPanel.currentPanel = new ConfigurationPanel(panel, extensionUri, configManager);
-    }
-    static revive(panel, extensionUri, configManager) {
-        ConfigurationPanel.currentPanel = new ConfigurationPanel(panel, extensionUri, configManager);
-    }
-    constructor(panel, extensionUri, configManager) {
-        this._disposables = [];
-        this._panel = panel;
-        this._extensionUri = extensionUri;
-        this._configManager = configManager;
-        // 设置初始内容
-        this._update();
-        // 监听面板被关闭
-        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+        };
+        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         // 处理来自webview的消息
-        this._panel.webview.onDidReceiveMessage(message => {
+        webviewView.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'saveConfig':
                     this._saveConfiguration(message.config);
@@ -73,12 +55,6 @@ class ConfigurationPanel {
                 case 'validatePath':
                     this._validatePath(message.path);
                     return;
-                case 'addMapping':
-                    this._addMapping(message.componentName, message.filePath);
-                    return;
-                case 'removeMapping':
-                    this._removeMapping(message.componentName);
-                    return;
                 case 'selectFolder':
                     this._selectFolder();
                     return;
@@ -88,31 +64,10 @@ class ConfigurationPanel {
                 case 'loadTemplate':
                     this._loadTemplate(message.templateName);
                     return;
-                case 'validateConfig':
-                    this._validateConfiguration();
-                    return;
             }
-        }, null, this._disposables);
-    }
-    dispose() {
-        ConfigurationPanel.currentPanel = undefined;
-        // 清理资源
-        this._panel.dispose();
-        while (this._disposables.length) {
-            const x = this._disposables.pop();
-            if (x) {
-                x.dispose();
-            }
-        }
-    }
-    static dispose() {
-        if (ConfigurationPanel.currentPanel) {
-            ConfigurationPanel.currentPanel.dispose();
-        }
-    }
-    _update() {
-        const webview = this._panel.webview;
-        this._panel.webview.html = this._getHtmlForWebview(webview);
+        });
+        // 初始加载配置
+        this._loadConfiguration();
     }
     _saveConfiguration(config) {
         try {
@@ -124,7 +79,7 @@ class ConfigurationPanel {
             // 重新加载配置管理器
             this._configManager.reload();
             // 发送成功消息到webview
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'configSaved',
                 success: true,
                 message: '配置保存成功！'
@@ -133,7 +88,7 @@ class ConfigurationPanel {
         }
         catch (error) {
             // 发送错误消息到webview
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'configSaved',
                 success: false,
                 message: `保存配置失败: ${error}`
@@ -148,7 +103,7 @@ class ConfigurationPanel {
                 mappingRule: this._configManager.getMappingRule(),
                 cacheTimeout: this._configManager.getCacheTimeout()
             };
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'configLoaded',
                 config: config
             });
@@ -162,12 +117,10 @@ class ConfigurationPanel {
             let isValid = false;
             let message = '';
             if (pathToValidate.startsWith('http://') || pathToValidate.startsWith('https://')) {
-                // 验证远程URL
                 isValid = true;
                 message = '远程URL格式正确';
             }
             else {
-                // 验证本地路径
                 const fs = require('fs').promises;
                 try {
                     await fs.access(pathToValidate);
@@ -179,7 +132,7 @@ class ConfigurationPanel {
                     message = '本地路径不存在';
                 }
             }
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'pathValidated',
                 path: pathToValidate,
                 isValid: isValid,
@@ -187,27 +140,13 @@ class ConfigurationPanel {
             });
         }
         catch (error) {
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'pathValidated',
                 path: pathToValidate,
                 isValid: false,
                 message: `验证失败: ${error}`
             });
         }
-    }
-    _addMapping(componentName, filePath) {
-        // 这里可以添加映射验证逻辑
-        this._panel.webview.postMessage({
-            command: 'mappingAdded',
-            componentName: componentName,
-            filePath: filePath
-        });
-    }
-    _removeMapping(componentName) {
-        this._panel.webview.postMessage({
-            command: 'mappingRemoved',
-            componentName: componentName
-        });
     }
     async _selectFolder() {
         try {
@@ -219,7 +158,7 @@ class ConfigurationPanel {
             };
             const folderUri = await vscode.window.showOpenDialog(options);
             if (folderUri && folderUri[0]) {
-                this._panel.webview.postMessage({
+                this._view?.webview.postMessage({
                     command: 'folderSelected',
                     path: folderUri[0].fsPath
                 });
@@ -233,7 +172,7 @@ class ConfigurationPanel {
         try {
             const docPath = this._configManager.getDocumentPath(componentName);
             if (!docPath) {
-                this._panel.webview.postMessage({
+                this._view?.webview.postMessage({
                     command: 'previewResult',
                     componentName: componentName,
                     success: false,
@@ -241,23 +180,19 @@ class ConfigurationPanel {
                 });
                 return;
             }
-            // 检查文件是否存在
             const fs = require('fs');
             let exists = false;
             let content = '';
             if (docPath.startsWith('http://') || docPath.startsWith('https://')) {
-                // 远程文件，只返回URL
                 exists = true;
                 content = `远程文档: ${docPath}`;
             }
             else {
-                // 本地文件
                 if (fs.existsSync(docPath)) {
                     exists = true;
                     try {
                         const fileContent = fs.readFileSync(docPath, 'utf-8');
-                        // 提取前200个字符作为预览
-                        content = fileContent.substring(0, 200) + (fileContent.length > 200 ? '...' : '');
+                        content = fileContent.substring(0, 150) + (fileContent.length > 150 ? '...' : '');
                     }
                     catch (error) {
                         content = `无法读取文件内容: ${error}`;
@@ -268,7 +203,7 @@ class ConfigurationPanel {
                     content = '文件不存在';
                 }
             }
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'previewResult',
                 componentName: componentName,
                 success: exists,
@@ -278,7 +213,7 @@ class ConfigurationPanel {
             });
         }
         catch (error) {
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'previewResult',
                 componentName: componentName,
                 success: false,
@@ -288,30 +223,6 @@ class ConfigurationPanel {
     }
     _loadTemplate(templateName) {
         const templates = {
-            'ouryun': {
-                basePath: '',
-                mappingRule: {
-                    // 常用组件
-                    'Button': '常用组件/button.md',
-                    'Input': '常用组件/input.md',
-                    'Table': '常用组件/table.md',
-                    'Form': '常用组件/form.md',
-                    'Modal': '常用组件/modal.md',
-                    'Select': '常用组件/select.md',
-                    'DatePicker': '常用组件/datePicker.md',
-                    'Upload': '常用组件/upload.md',
-                    'Tree': '常用组件/tree.md',
-                    // 业务组件
-                    'SearchTable': '业务组件/searchTable.md',
-                    'PageSelect': '业务组件/pageSelect.md',
-                    'JsonTree': '业务组件/jsonTree.md',
-                    'DragUpload': '业务组件/dragUpload.md',
-                    'AutocompleteInput': '业务组件/autocompleteInput.md',
-                    // 通用规则（支持递归搜索）
-                    '/(.*)/': '$1.md'
-                },
-                cacheTimeout: 300000
-            },
             'antd': {
                 basePath: '',
                 mappingRule: {
@@ -336,12 +247,64 @@ class ConfigurationPanel {
                 },
                 cacheTimeout: 300000
             },
+            'ouryun': {
+                basePath: '',
+                mappingRule: {
+                    // 常用组件映射
+                    'Button': '常用组件/button.md',
+                    'Input': '常用组件/input.md',
+                    'Table': '常用组件/table.md',
+                    'Form': '常用组件/form.md',
+                    'Modal': '常用组件/modal.md',
+                    'Select': '常用组件/select.md',
+                    'DatePicker': '常用组件/datePicker.md',
+                    'Upload': '常用组件/upload.md',
+                    'Tree': '常用组件/tree.md',
+                    'Pagination': '常用组件/pagination.md',
+                    'Tabs': '常用组件/tabs.md',
+                    'Switch': '常用组件/switch.md',
+                    'Radio': '常用组件/radio.md',
+                    'Checkbox': '常用组件/checkbox.md',
+                    'Tooltip': '常用组件/tooltip.md',
+                    'Drawer': '常用组件/drawer.md',
+                    'Loading': '常用组件/loading.md',
+                    'Tag': '常用组件/tag.md',
+                    'Icon': '常用组件/Icon.md',
+                    'Image': '常用组件/image.md',
+                    'Cascader': '常用组件/cascader.md',
+                    'TimePicker': '常用组件/timePicker.md',
+                    'Watermark': '常用组件/watermark.md',
+                    // 业务组件映射
+                    'SearchTable': '业务组件/searchTable.md',
+                    'PageSelect': '业务组件/pageSelect.md',
+                    'JsonTree': '业务组件/jsonTree.md',
+                    'LinkTable': '业务组件/linkTable.md',
+                    'RankTable': '业务组件/rankTable.md',
+                    'TableEditor': '业务组件/tableEditor.md',
+                    'DragUpload': '业务组件/dragUpload.md',
+                    'InputUpload': '业务组件/inputUpload.md',
+                    'UploadButton': '业务组件/uploadButton.md',
+                    'AutocompleteInput': '业务组件/autocompleteInput.md',
+                    'MultilineEditor': '业务组件/multilineEditor.md',
+                    'CascadeEditor': '业务组件/cascadeEditor.md',
+                    'TextArea': '业务组件/textArea.md',
+                    'TextEllipsis': '业务组件/textEllipsis.md',
+                    'Transfer': '业务组件/transfer.md',
+                    'Progress': '业务组件/progress.md',
+                    'Lottie': '业务组件/lottie.md',
+                    'Echarts': '业务组件/echarts.md',
+                    // 通用正则规则（递归搜索会自动处理）
+                    '/(.*)/': '$1.md'
+                },
+                cacheTimeout: 300000
+            },
             'custom': {
                 basePath: '',
                 mappingRule: {
                     'Button': 'button.md',
                     'Input': 'input.md',
                     'Card': 'card.md',
+                    // 支持递归搜索的通用规则
                     '/(.*)/': '$1.md'
                 },
                 cacheTimeout: 300000
@@ -349,31 +312,15 @@ class ConfigurationPanel {
         };
         const template = templates[templateName];
         if (template) {
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'templateLoaded',
                 template: template,
                 templateName: templateName
             });
         }
     }
-    _validateConfiguration() {
-        try {
-            const validation = this._configManager.validateConfig();
-            this._panel.webview.postMessage({
-                command: 'configValidated',
-                validation: validation
-            });
-        }
-        catch (error) {
-            this._panel.webview.postMessage({
-                command: 'configValidated',
-                validation: {
-                    isValid: false,
-                    errors: [`验证配置时出错: ${error}`],
-                    warnings: []
-                }
-            });
-        }
+    refresh() {
+        this._reloadConfiguration();
     }
     _reloadConfiguration() {
         try {
@@ -382,14 +329,14 @@ class ConfigurationPanel {
             // 然后加载配置
             this._loadConfiguration();
             // 发送重置成功消息
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'configReset',
                 success: true,
                 message: '配置已重置'
             });
         }
         catch (error) {
-            this._panel.webview.postMessage({
+            this._view?.webview.postMessage({
                 command: 'configReset',
                 success: false,
                 message: `重置配置失败: ${error}`
@@ -400,8 +347,7 @@ class ConfigurationPanel {
         // 获取样式文件URI
         const stylesResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
         const stylesMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
-        const stylesConfigUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'config.css'));
-        // 使用nonce确保安全
+        const stylesConfigUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'sidebar.css'));
         const nonce = this.getNonce();
         return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -412,90 +358,69 @@ class ConfigurationPanel {
     <link href="${stylesResetUri}" rel="stylesheet">
     <link href="${stylesMainUri}" rel="stylesheet">
     <link href="${stylesConfigUri}" rel="stylesheet">
-    <title>组件文档配置</title>
+    <title>组件文档设置</title>
 </head>
 <body>
-    <div class="container">
-        <h1>🔧 组件文档配置</h1>
-
-        <!-- 配置模板选择 -->
-        <div class="template-section">
-            <h3>📋 快速配置模板</h3>
-            <div class="template-buttons">
-                <button type="button" class="template-btn" data-template="ouryun">OurYun 组件库</button>
-                <button type="button" class="template-btn" data-template="antd">Ant Design</button>
-                <button type="button" class="template-btn" data-template="element">Element UI</button>
-                <button type="button" class="template-btn" data-template="custom">自定义模板</button>
+    <div class="sidebar-container">
+        <div class="header">
+            <h2>⚙️ 配置设置</h2>
+        </div>
+        
+        <!-- 快速模板 -->
+        <div class="section">
+            <h3>📋 快速模板</h3>
+            <div class="template-grid">
+                <button class="template-btn" data-template="ouryun">OurYun</button>
+                <button class="template-btn" data-template="antd">Ant Design</button>
+                <button class="template-btn" data-template="element">Element UI</button>
+                <button class="template-btn" data-template="custom">自定义</button>
             </div>
-            <small class="help-text">选择一个模板快速开始配置</small>
         </div>
 
-        <form id="configForm">
-            <div class="form-group">
-                <label for="basePath">📁 基础路径 (Base Path)</label>
-                <div class="path-input-group">
-                    <input type="text" id="basePath" name="basePath" placeholder="例如: /path/to/docs 或 https://docs.example.com">
-                    <button type="button" id="selectFolderBtn" class="folder-btn">📂 选择文件夹</button>
-                </div>
-                <small class="help-text">组件库文档的根路径（本地路径或远程URL）</small>
-                <div class="validation-message" id="basePathValidation"></div>
+        <!-- 基础路径 -->
+        <div class="section">
+            <h3>📁 文档路径</h3>
+            <div class="input-group">
+                <input type="text" id="basePath" placeholder="选择文档目录...">
+                <button id="selectFolderBtn" class="icon-btn">📂</button>
             </div>
+            <div id="basePathValidation" class="validation-msg"></div>
+        </div>
 
-            <div class="form-group">
-                <label for="cacheTimeout">⏱️ 缓存超时时间 (毫秒)</label>
-                <input type="number" id="cacheTimeout" name="cacheTimeout" min="0" value="300000">
-                <small class="help-text">远程文档缓存过期时间（默认5分钟）</small>
+        <!-- 映射规则 -->
+        <div class="section">
+            <h3>🗂️ 映射规则</h3>
+            <div id="mappingList" class="mapping-list">
+                <!-- 动态生成 -->
             </div>
+            <div class="add-mapping">
+                <input type="text" id="newComponentName" placeholder="组件名">
+                <input type="text" id="newFilePath" placeholder="文件路径">
+                <button id="addMappingBtn" class="add-btn">➕</button>
+            </div>
+        </div>
 
-            <div class="form-group">
-                <label>🗂️ 组件映射规则 (Mapping Rules)</label>
-                <div class="mapping-container">
-                    <div class="mapping-header">
-                        <span>组件名称</span>
-                        <span>文档文件路径</span>
-                        <span>操作</span>
-                    </div>
-                    <div id="mappingList" class="mapping-list">
-                        <!-- 映射规则将在这里动态生成 -->
-                    </div>
-                    <div class="mapping-add">
-                        <input type="text" id="newComponentName" placeholder="组件名称 (如: Button)">
-                        <input type="text" id="newFilePath" placeholder="文档文件路径 (如: button.md)">
-                        <button type="button" id="addMappingBtn">➕ 添加映射</button>
-                    </div>
-                </div>
-                <small class="help-text">
-                    💡 支持正则表达式：使用 <code>/(.*)/</code> 作为组件名，<code>$1.md</code> 作为路径可匹配所有组件
-                </small>
+        <!-- 预览测试 -->
+        <div class="section">
+            <h3>🔍 预览测试</h3>
+            <div class="input-group">
+                <input type="text" id="previewComponentName" placeholder="输入组件名测试">
+                <button id="previewBtn" class="icon-btn">👁️</button>
             </div>
+            <div id="previewResult" class="preview-result"></div>
+        </div>
 
-            <!-- 预览区域 -->
-            <div class="form-group">
-                <label>🔍 配置预览</label>
-                <div class="preview-container">
-                    <div class="preview-input">
-                        <input type="text" id="previewComponentName" placeholder="输入组件名测试映射 (如: Button)">
-                        <button type="button" id="previewBtn">🔍 预览</button>
-                    </div>
-                    <div id="previewResult" class="preview-result"></div>
-                </div>
-            </div>
+        <!-- 缓存设置 -->
+        <div class="section">
+            <h3>⏱️ 缓存设置</h3>
+            <input type="number" id="cacheTimeout" min="0" value="300000" placeholder="缓存时间(毫秒)">
+        </div>
 
-            <!-- 配置验证区域 -->
-            <div class="form-group">
-                <label>🔍 配置验证</label>
-                <div class="validation-container">
-                    <button type="button" id="validateBtn" class="validate-btn">🔍 验证当前配置</button>
-                    <div id="validationResult" class="validation-result"></div>
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" id="saveBtn" class="primary">💾 保存配置</button>
-                <button type="button" id="resetBtn">🔄 重置</button>
-                <button type="button" id="validateBtn2" class="validate-btn">🔍 验证配置</button>
-            </div>
-        </form>
+        <!-- 操作按钮 -->
+        <div class="actions">
+            <button id="saveBtn" class="primary-btn">💾 保存</button>
+            <button id="resetBtn" class="secondary-btn">🔄 重置</button>
+        </div>
 
         <div id="messageContainer" class="message-container"></div>
     </div>
@@ -516,22 +441,16 @@ class ConfigurationPanel {
     }
     _getWebviewScript() {
         return `
-            // 获取VS Code API
             const vscode = acquireVsCodeApi();
-            
-            // 当前配置数据
+
             let currentConfig = {
                 basePath: '',
                 mappingRule: {},
                 cacheTimeout: 300000
             };
 
-            // 初始化
             document.addEventListener('DOMContentLoaded', function() {
-                // 加载当前配置
                 vscode.postMessage({ command: 'loadConfig' });
-                
-                // 绑定事件
                 bindEvents();
             });
 
@@ -542,21 +461,14 @@ class ConfigurationPanel {
                 // 重置按钮
                 document.getElementById('resetBtn').addEventListener('click', resetConfiguration);
 
-                // 添加映射按钮
-                document.getElementById('addMappingBtn').addEventListener('click', addMapping);
-
-                // 基础路径验证
-                document.getElementById('basePath').addEventListener('blur', validateBasePath);
-
-                // 选择文件夹按钮
+                // 选择文件夹
                 document.getElementById('selectFolderBtn').addEventListener('click', selectFolder);
+
+                // 添加映射
+                document.getElementById('addMappingBtn').addEventListener('click', addMapping);
 
                 // 预览按钮
                 document.getElementById('previewBtn').addEventListener('click', previewMapping);
-
-                // 验证按钮
-                document.getElementById('validateBtn').addEventListener('click', validateConfiguration);
-                document.getElementById('validateBtn2').addEventListener('click', validateConfiguration);
 
                 // 模板按钮
                 document.querySelectorAll('.template-btn').forEach(btn => {
@@ -565,6 +477,9 @@ class ConfigurationPanel {
                         loadTemplate(template);
                     });
                 });
+
+                // 路径验证
+                document.getElementById('basePath').addEventListener('blur', validateBasePath);
 
                 // 回车键支持
                 document.getElementById('newComponentName').addEventListener('keypress', function(e) {
@@ -590,15 +505,12 @@ class ConfigurationPanel {
             }
 
             function saveConfiguration() {
-                const form = document.getElementById('configForm');
-                const formData = new FormData(form);
-                
                 const config = {
-                    basePath: formData.get('basePath'),
-                    cacheTimeout: parseInt(formData.get('cacheTimeout')),
+                    basePath: document.getElementById('basePath').value.trim(),
+                    cacheTimeout: parseInt(document.getElementById('cacheTimeout').value) || 300000,
                     mappingRule: currentConfig.mappingRule
                 };
-                
+
                 vscode.postMessage({
                     command: 'saveConfig',
                     config: config
@@ -610,19 +522,22 @@ class ConfigurationPanel {
                 vscode.postMessage({ command: 'loadConfig' });
             }
 
+            function selectFolder() {
+                vscode.postMessage({ command: 'selectFolder' });
+            }
+
             function addMapping() {
                 const componentName = document.getElementById('newComponentName').value.trim();
                 const filePath = document.getElementById('newFilePath').value.trim();
-                
+
                 if (!componentName || !filePath) {
                     showMessage('请填写组件名称和文档文件路径', 'error');
                     return;
                 }
-                
+
                 currentConfig.mappingRule[componentName] = filePath;
                 renderMappingList();
-                
-                // 清空输入框
+
                 document.getElementById('newComponentName').value = '';
                 document.getElementById('newFilePath').value = '';
             }
@@ -630,20 +545,6 @@ class ConfigurationPanel {
             function removeMapping(componentName) {
                 delete currentConfig.mappingRule[componentName];
                 renderMappingList();
-            }
-
-            function validateBasePath() {
-                const basePath = document.getElementById('basePath').value.trim();
-                if (basePath) {
-                    vscode.postMessage({
-                        command: 'validatePath',
-                        path: basePath
-                    });
-                }
-            }
-
-            function selectFolder() {
-                vscode.postMessage({ command: 'selectFolder' });
             }
 
             function previewMapping() {
@@ -666,15 +567,14 @@ class ConfigurationPanel {
                 });
             }
 
-            function validateConfiguration() {
-                // 先更新当前配置
-                const form = document.getElementById('configForm');
-                const formData = new FormData(form);
-
-                currentConfig.basePath = formData.get('basePath');
-                currentConfig.cacheTimeout = parseInt(formData.get('cacheTimeout'));
-
-                vscode.postMessage({ command: 'validateConfig' });
+            function validateBasePath() {
+                const basePath = document.getElementById('basePath').value.trim();
+                if (basePath) {
+                    vscode.postMessage({
+                        command: 'validatePath',
+                        path: basePath
+                    });
+                }
             }
 
             function renderMappingList() {
@@ -682,40 +582,24 @@ class ConfigurationPanel {
                 container.innerHTML = '';
 
                 for (const [componentName, filePath] of Object.entries(currentConfig.mappingRule)) {
-                    const row = document.createElement('div');
-                    row.className = 'mapping-row';
+                    const item = document.createElement('div');
+                    item.className = 'mapping-item';
 
-                    // 判断是否为正则表达式
                     const isRegex = componentName.startsWith('/') && componentName.endsWith('/');
-                    const displayName = isRegex ? \`🔄 \${componentName}\` : \`📦 \${componentName}\`;
+                    const displayName = isRegex ? '🔄 ' + componentName : '📦 ' + componentName;
 
-                    row.innerHTML = \`
-                        <span class="component-name">\${displayName}</span>
-                        <span class="file-path">\${filePath}</span>
-                        <div class="mapping-actions">
-                            <button type="button" class="preview-btn" onclick="previewSpecificMapping('\${componentName}')">👁️</button>
-                            <button type="button" class="remove-btn" onclick="removeMapping('\${componentName}')">🗑️</button>
+                    item.innerHTML = \`
+                        <div class="mapping-info">
+                            <div class="component-name">\${displayName}</div>
+                            <div class="file-path">\${filePath}</div>
                         </div>
+                        <button class="remove-btn" onclick="removeMapping('\${componentName}')">🗑️</button>
                     \`;
-                    container.appendChild(row);
+                    container.appendChild(item);
                 }
 
                 if (Object.keys(currentConfig.mappingRule).length === 0) {
-                    container.innerHTML = '<div class="empty-state">暂无映射规则，请添加组件映射</div>';
-                }
-            }
-
-            function previewSpecificMapping(componentName) {
-                // 如果是正则表达式，提示用户输入具体组件名
-                if (componentName.startsWith('/') && componentName.endsWith('/')) {
-                    const testName = prompt('请输入要测试的组件名称（用于测试正则表达式）:', 'Button');
-                    if (testName) {
-                        document.getElementById('previewComponentName').value = testName;
-                        previewMapping();
-                    }
-                } else {
-                    document.getElementById('previewComponentName').value = componentName;
-                    previewMapping();
+                    container.innerHTML = '<div class="empty-state">暂无映射规则</div>';
                 }
             }
 
@@ -724,10 +608,9 @@ class ConfigurationPanel {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = \`message \${type}\`;
                 messageDiv.textContent = message;
-                
+
                 container.appendChild(messageDiv);
-                
-                // 3秒后自动移除消息
+
                 setTimeout(() => {
                     if (messageDiv.parentNode) {
                         messageDiv.parentNode.removeChild(messageDiv);
@@ -771,9 +654,6 @@ class ConfigurationPanel {
                     case 'templateLoaded':
                         loadTemplateData(message.template, message.templateName);
                         break;
-                    case 'configValidated':
-                        showValidationResult(message.validation);
-                        break;
                 }
             });
 
@@ -797,20 +677,14 @@ class ConfigurationPanel {
                 const validationMsg = document.getElementById('basePathValidation');
                 if (validationMsg) {
                     validationMsg.textContent = '';
-                    validationMsg.className = 'validation-message';
-                }
-
-                // 清除验证结果
-                const validationResult = document.getElementById('validationResult');
-                if (validationResult) {
-                    validationResult.innerHTML = '';
+                    validationMsg.className = 'validation-msg';
                 }
             }
 
             function showPathValidation(path, isValid, message) {
                 const validationDiv = document.getElementById('basePathValidation');
                 validationDiv.textContent = message;
-                validationDiv.className = \`validation-message \${isValid ? 'valid' : 'invalid'}\`;
+                validationDiv.className = \`validation-msg \${isValid ? 'valid' : 'invalid'}\`;
             }
 
             function showPreviewResult(result) {
@@ -819,20 +693,16 @@ class ConfigurationPanel {
                 if (result.success) {
                     container.innerHTML = \`
                         <div class="preview-success">
-                            <h4>✅ \${result.componentName} 组件文档</h4>
-                            <p><strong>路径:</strong> \${result.path}</p>
-                            <div class="preview-content">
-                                <strong>内容预览:</strong>
-                                <pre>\${result.content}</pre>
-                            </div>
+                            <div class="preview-title">✅ \${result.componentName}</div>
+                            <div class="preview-path">\${result.path}</div>
+                            <div class="preview-content">\${result.content}</div>
                         </div>
                     \`;
                 } else {
                     container.innerHTML = \`
                         <div class="preview-error">
-                            <h4>❌ \${result.componentName} 组件文档</h4>
-                            <p><strong>错误:</strong> \${result.message}</p>
-                            \${result.path ? \`<p><strong>尝试的路径:</strong> \${result.path}</p>\` : ''}
+                            <div class="preview-title">❌ \${result.componentName}</div>
+                            <div class="preview-message">\${result.message}</div>
                         </div>
                     \`;
                 }
@@ -841,7 +711,7 @@ class ConfigurationPanel {
             function loadTemplateData(template, templateName) {
                 currentConfig = { ...template };
                 updateForm();
-                showMessage(\`已加载 \${templateName} 模板配置\`, 'success');
+                showMessage(\`已加载 \${templateName} 模板\`, 'success');
 
                 // 高亮选中的模板按钮
                 document.querySelectorAll('.template-btn').forEach(btn => {
@@ -849,48 +719,9 @@ class ConfigurationPanel {
                 });
                 document.querySelector(\`[data-template="\${templateName}"]\`).classList.add('active');
             }
-
-            function showValidationResult(validation) {
-                const container = document.getElementById('validationResult');
-
-                let html = '';
-
-                if (validation.isValid) {
-                    html += '<div class="validation-success"><h4>✅ 配置验证通过</h4>';
-                } else {
-                    html += '<div class="validation-error"><h4>❌ 配置验证失败</h4>';
-                }
-
-                // 显示错误
-                if (validation.errors && validation.errors.length > 0) {
-                    html += '<div class="validation-errors"><strong>错误:</strong><ul>';
-                    validation.errors.forEach(error => {
-                        html += \`<li>\${error}</li>\`;
-                    });
-                    html += '</ul></div>';
-                }
-
-                // 显示警告
-                if (validation.warnings && validation.warnings.length > 0) {
-                    html += '<div class="validation-warnings"><strong>警告:</strong><ul>';
-                    validation.warnings.forEach(warning => {
-                        html += \`<li>\${warning}</li>\`;
-                    });
-                    html += '</ul></div>';
-                }
-
-                html += '</div>';
-                container.innerHTML = html;
-
-                // 显示消息提示
-                if (validation.isValid) {
-                    showMessage('配置验证通过！', 'success');
-                } else {
-                    showMessage('配置验证失败，请检查错误信息', 'error');
-                }
-            }
         `;
     }
 }
-exports.ConfigurationPanel = ConfigurationPanel;
-//# sourceMappingURL=ConfigurationPanel.js.map
+exports.SettingsViewProvider = SettingsViewProvider;
+SettingsViewProvider.viewType = 'componentDocSettings';
+//# sourceMappingURL=SettingsViewProvider.js.map

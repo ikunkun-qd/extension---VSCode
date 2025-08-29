@@ -28,6 +28,7 @@ const vscode = __importStar(require("vscode"));
 const HoverProvider_1 = require("./providers/HoverProvider");
 const DocumentationPanel_1 = require("./panels/DocumentationPanel");
 const ConfigurationPanel_1 = require("./panels/ConfigurationPanel");
+const SettingsViewProvider_1 = require("./panels/SettingsViewProvider");
 const ConfigManager_1 = require("./services/ConfigManager");
 const DocumentService_1 = require("./services/DocumentService");
 /**
@@ -48,6 +49,9 @@ function activate(context) {
         { scheme: 'file', language: 'typescriptreact' },
         { scheme: 'file', language: 'vue' }
     ], hoverProvider);
+    // 注册侧边栏设置视图
+    const settingsProvider = new SettingsViewProvider_1.SettingsViewProvider(context.extensionUri, configManager);
+    const settingsViewDisposable = vscode.window.registerWebviewViewProvider(SettingsViewProvider_1.SettingsViewProvider.viewType, settingsProvider);
     // 注册显示文档命令
     const showDocCommand = vscode.commands.registerCommand('componentDoc.showDocumentation', async (componentName) => {
         try {
@@ -66,6 +70,20 @@ function activate(context) {
             vscode.window.showErrorMessage(`无法打开配置界面: ${error}`);
         }
     });
+    // 注册切换设置面板命令
+    const toggleSettingsPanelCommand = vscode.commands.registerCommand('componentDoc.toggleSettingsPanel', () => {
+        vscode.commands.executeCommand('workbench.view.extension.componentDoc');
+    });
+    // 注册刷新设置命令
+    const refreshSettingsCommand = vscode.commands.registerCommand('componentDoc.refreshSettings', () => {
+        settingsProvider.refresh();
+    });
+    // 创建状态栏按钮
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    statusBarItem.text = "$(gear) 组件文档设置";
+    statusBarItem.tooltip = "打开组件文档设置面板";
+    statusBarItem.command = 'componentDoc.toggleSettingsPanel';
+    statusBarItem.show();
     // 监听配置变化
     const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(event => {
         if (event.affectsConfiguration('componentDoc')) {
@@ -74,7 +92,7 @@ function activate(context) {
         }
     });
     // 添加到上下文订阅
-    context.subscriptions.push(hoverDisposable, showDocCommand, openSettingsCommand, configChangeDisposable);
+    context.subscriptions.push(hoverDisposable, settingsViewDisposable, showDocCommand, openSettingsCommand, toggleSettingsPanelCommand, refreshSettingsCommand, statusBarItem, configChangeDisposable);
 }
 exports.activate = activate;
 /**

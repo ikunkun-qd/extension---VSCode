@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { Button, Input, Card } from '@/components';
+import { Button, Input, Table, Form, Modal, Select } from '@/components';
+import { SearchTable, PageSelect, JsonTree, DragUpload, AutocompleteInput } from '@/business-components';
 
 /**
  * 测试组件 - 用于测试插件的悬停提示功能
- * 
+ *
  * 使用方法：
- * 1. 将鼠标悬停在组件名称上（如 Button、Input、Card）
+ * 1. 将鼠标悬停在组件名称上（如 Button、Input、SearchTable）
  * 2. 查看悬停提示框
  * 3. 点击"查看完整文档"链接
+ *
+ * 测试多层文档匹配：
+ * - 常用组件：Button, Input, Table, Form, Modal, Select
+ * - 业务组件：SearchTable, PageSelect, JsonTree, DragUpload
  */
 function TestComponent() {
   const [inputValue, setInputValue] = useState('');
@@ -64,16 +69,64 @@ function TestComponent() {
         </div>
       </section>
 
-      {/* 测试 Card 组件 */}
+      {/* 测试业务组件 */}
       <section>
-        <h2>Card 组件测试</h2>
-        <Card title="用户信息">
-          <p>用户名: {inputValue || '未输入'}</p>
-          <p>按钮点击次数: {count}</p>
-          <Button type="primary" size="small">
-            编辑
-          </Button>
-        </Card>
+        <h2>业务组件测试</h2>
+        <div className="business-components">
+          <SearchTable
+            data={[]}
+            columns={[]}
+            onSearch={() => {}}
+          />
+          <PageSelect
+            current={1}
+            total={100}
+            onChange={() => {}}
+          />
+          <JsonTree
+            data={{}}
+            onNodeClick={() => {}}
+          />
+          <DragUpload
+            onUpload={() => {}}
+            accept=".jpg,.png"
+          />
+          <AutocompleteInput
+            value={inputValue}
+            onChange={handleInputChange}
+            suggestions={[]}
+          />
+        </div>
+      </section>
+
+      {/* 测试更多常用组件 */}
+      <section>
+        <h2>更多常用组件测试</h2>
+        <div className="more-components">
+          <Table
+            dataSource={[]}
+            columns={[]}
+          />
+          <Form
+            onSubmit={() => {}}
+          >
+            <Form.Item label="测试">
+              <Input placeholder="表单输入" />
+            </Form.Item>
+          </Form>
+          <Modal
+            visible={false}
+            title="测试弹窗"
+            onCancel={() => {}}
+          >
+            <p>弹窗内容</p>
+          </Modal>
+          <Select
+            value=""
+            onChange={() => {}}
+            options={[]}
+          />
+        </div>
       </section>
 
       {/* 测试自闭合标签 */}
