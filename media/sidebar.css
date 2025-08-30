@@ -294,6 +294,47 @@
   font-size: 12px;
 }
 
+/* 保存选项 */
+.save-options {
+  margin: 16px 0;
+  padding: 12px;
+  background-color: var(--vscode-editor-background);
+  border-radius: 6px;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--vscode-button-background);
+}
+
+.checkbox-group .checkmark {
+  font-weight: 500;
+}
+
+.help-text {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-left: 24px;
+  line-height: 1.4;
+}
+
 /* 操作按钮 */
 .actions {
   display: flex;

@@ -80,13 +80,9 @@ class SettingsViewProvider {
             });
             // 更新VSCode配置
             const workspaceConfig = vscode.workspace.getConfiguration('componentDoc');
-            // 尝试保存到工作区，如果失败则保存到全局
-            let configTarget = vscode.ConfigurationTarget.Workspace;
-            // 检查是否有工作区
-            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                configTarget = vscode.ConfigurationTarget.Global;
-                console.log('[SettingsViewProvider] 没有工作区，使用全局配置');
-            }
+            // 确定配置保存目标
+            let configTarget = this.determineConfigTarget(config);
+            console.log('[SettingsViewProvider] 配置保存目标:', configTarget === vscode.ConfigurationTarget.Global ? 'Global' : 'Workspace');
             await workspaceConfig.update('basePath', config.basePath, configTarget);
             await workspaceConfig.update('mappingRule', config.mappingRule, configTarget);
             await workspaceConfig.update('cacheTimeout', config.cacheTimeout, configTarget);
@@ -102,11 +98,14 @@ class SettingsViewProvider {
                 basePath: verifyBasePath,
                 mappingRule: verifyMappingRule
             });
-            // 检查配置是否真的更新了
-            if (verifyBasePath !== config.basePath) {
-                console.error('[SettingsViewProvider] 配置保存失败！期望:', config.basePath, '实际:', verifyBasePath);
+            // 检查配置是否真的更新了（Windows路径不区分大小写）
+            const normalizedExpected = this.normalizePath(config.basePath);
+            const normalizedActual = this.normalizePath(verifyBasePath);
+            if (normalizedExpected !== normalizedActual) {
+                console.error('[SettingsViewProvider] 配置保存失败！期望:', normalizedExpected, '实际:', normalizedActual);
                 throw new Error(`配置保存失败：期望 ${config.basePath}，但实际保存的是 ${verifyBasePath}`);
             }
+            console.log('[SettingsViewProvider] 配置验证通过 - 期望:', normalizedExpected, '实际:', normalizedActual);
             // 发送成功消息到webview
             this._view?.webview.postMessage({
                 command: 'configSaved',
@@ -280,74 +279,19 @@ class SettingsViewProvider {
             'ouryun': {
                 basePath: 'D:\\Front_end\\前端项目\\shixi\\ouryun-design\\docs\\zh-CN\\components\\ouryun-plus',
                 mappingRule: {
-                    // 常用组件映射（根据实际文档结构）
-                    'Button': '常用组件/button.md',
-                    'Input': '常用组件/input.md',
-                    'Table': '常用组件/table.md',
-                    'Form': '常用组件/form.md',
-                    'Modal': '常用组件/modal.md',
-                    'Select': '常用组件/select.md',
-                    'SelectV2': '常用组件/selectV2.md',
-                    'DatePicker': '常用组件/datePicker.md',
-                    'Upload': '常用组件/upload.md',
-                    'Tree': '常用组件/tree.md',
-                    'TreeSelect': '常用组件/treeSelect.md',
-                    'Pagination': '常用组件/pagination.md',
-                    'Tabs': '常用组件/tabs.md',
-                    'Switch': '常用组件/switch.md',
-                    'Radio': '常用组件/radio.md',
-                    'Checkbox': '常用组件/checkbox.md',
-                    'Tooltip': '常用组件/tooltip.md',
-                    'TooltipIcon': '常用组件/tooltipIcon.md',
-                    'Drawer': '常用组件/drawer.md',
-                    'Loading': '常用组件/loading.md',
-                    'Tag': '常用组件/tag.md',
-                    'TagGroup': '常用组件/tagGroup.md',
-                    'Icon': '常用组件/Icon.md',
-                    'IconGroup': '常用组件/iconGroup.md',
-                    'Image': '常用组件/image.md',
-                    'Cascader': '常用组件/cascader.md',
-                    'TimePicker': '常用组件/timePicker.md',
-                    'Watermark': '常用组件/watermark.md',
-                    'PasswordInput': '常用组件/passwordInput.md',
-                    'InputSelect': '常用组件/inputSelect.md',
-                    'PopoverButton': '常用组件/popoverButton.md',
-                    'DropDown': '常用组件/dropDown.md',
-                    'StatusText': '常用组件/statusText.md',
-                    'Scrollbar': '常用组件/scrollbar.md',
-                    'AddBar': '常用组件/addBar.md',
-                    'ConfirmDialog': '常用组件/confirmDialog.md',
-                    'OperaDialog': '常用组件/operaDialog.md',
-                    // 业务组件映射（根据实际文档结构）
+                    // 业务组件精确映射（这些组件名和文档名完全匹配）
                     'SearchTable': '业务组件/searchTable.md',
                     'ou-search-table': '业务组件/searchTable.md',
                     'PageSelect': '业务组件/pageSelect.md',
                     'ou-page-select': '业务组件/pageSelect.md',
                     'JsonTree': '业务组件/jsonTree.md',
-                    'LinkTable': '业务组件/linkTable.md',
-                    'RankTable': '业务组件/rankTable.md',
-                    'TableEditor': '业务组件/tableEditor.md',
-                    'DragUpload': '业务组件/dragUpload.md',
-                    'InputUpload': '业务组件/inputUpload.md',
-                    'UploadButton': '业务组件/uploadButton.md',
-                    'AutocompleteInput': '业务组件/autocompleteInput.md',
-                    'MultilineEditor': '业务组件/multilineEditor.md',
-                    'CascadeEditor': '业务组件/cascadeEditor.md',
-                    'CascadeEditorM': '业务组件/cascadeEditorM.md',
-                    'TextArea': '业务组件/textArea.md',
-                    'TextEllipsis': '业务组件/textEllipsis.md',
-                    'Transfer': '业务组件/transfer.md',
-                    'Progress': '业务组件/progress.md',
-                    'Lottie': '业务组件/lottie.md',
-                    'Echarts': '业务组件/echarts.md',
-                    'BasicInfo': '业务组件/BasicInfo.md',
-                    'CollapsePanel': '业务组件/collapsePanel.md',
-                    'DetailCollapse': '业务组件/detailCollapse.md',
-                    'DocumentTemplate': '业务组件/documentTemplate.md',
-                    'InterfaceDetail': '业务组件/interfaceDetail2.0.md',
-                    'PopverTree': '业务组件/popverTree.md',
-                    'SelectFiltrate': '业务组件/select-filtrate.md',
-                    'SelectForm': '业务组件/select-form.md',
+                    // 注意：常用组件不再需要精确映射，将使用智能模糊匹配
+                    // 例如：Button 会自动匹配到 常用组件/button.md
+                    //      Input 会自动匹配到 常用组件/input.md
+                    //      Form 会自动匹配到 常用组件/form.md
+                    // 其他业务组件也将使用智能模糊匹配
+                    // 例如：DragUpload 会自动匹配到 业务组件/dragUpload.md
+                    //      Progress 会自动匹配到 业务组件/progress.md
                     // 通用正则规则（递归搜索会自动处理）
                     '/(.*)/': '$1.md'
                 },
@@ -471,9 +415,24 @@ class SettingsViewProvider {
             <input type="number" id="cacheTimeout" min="0" value="300000" placeholder="缓存时间(毫秒)">
         </div>
 
+        <!-- 保存选项 -->
+        <div class="save-options">
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="saveToGlobal">
+                    <span class="checkmark"></span>
+                    保存为全局配置（对所有项目生效）
+                </label>
+                <div class="help-text">
+                    勾选此选项将配置保存到用户全局设置，未配置的项目将自动使用此配置
+                </div>
+            </div>
+        </div>
+
         <!-- 操作按钮 -->
         <div class="actions">
-            <button id="saveBtn" class="primary-btn">💾 保存</button>
+            <button id="saveBtn" class="primary-btn">💾 保存配置</button>
+            <button id="copyConfigBtn" class="secondary-btn">📋 复制配置到剪贴板</button>
             <button id="resetBtn" class="secondary-btn">🔄 重置</button>
         </div>
 
@@ -512,6 +471,9 @@ class SettingsViewProvider {
             function bindEvents() {
                 // 保存按钮
                 document.getElementById('saveBtn').addEventListener('click', saveConfiguration);
+
+                // 复制配置按钮
+                document.getElementById('copyConfigBtn').addEventListener('click', copyConfiguration);
 
                 // 重置按钮
                 document.getElementById('resetBtn').addEventListener('click', resetConfiguration);
@@ -563,12 +525,35 @@ class SettingsViewProvider {
                 const config = {
                     basePath: document.getElementById('basePath').value.trim(),
                     cacheTimeout: parseInt(document.getElementById('cacheTimeout').value) || 300000,
-                    mappingRule: currentConfig.mappingRule
+                    mappingRule: currentConfig.mappingRule,
+                    saveToGlobal: document.getElementById('saveToGlobal').checked
                 };
+
+                console.log('保存配置:', config);
 
                 vscode.postMessage({
                     command: 'saveConfig',
                     config: config
+                });
+            }
+
+            function copyConfiguration() {
+                const config = {
+                    basePath: document.getElementById('basePath').value.trim(),
+                    cacheTimeout: parseInt(document.getElementById('cacheTimeout').value) || 300000,
+                    mappingRule: currentConfig.mappingRule
+                };
+
+                const configText = JSON.stringify({
+                    "componentDoc.basePath": config.basePath,
+                    "componentDoc.mappingRule": config.mappingRule,
+                    "componentDoc.cacheTimeout": config.cacheTimeout
+                }, null, 2);
+
+                navigator.clipboard.writeText(configText).then(() => {
+                    showMessage('配置已复制到剪贴板！可以粘贴到其他项目的 .vscode/settings.json 文件中', 'success');
+                }).catch(err => {
+                    showMessage('复制失败: ' + err, 'error');
                 });
             }
 
@@ -775,6 +760,37 @@ class SettingsViewProvider {
                 document.querySelector(\`[data-template="\${templateName}"]\`).classList.add('active');
             }
         `;
+    }
+    /**
+     * 确定配置保存目标
+     */
+    determineConfigTarget(config) {
+        // 检查是否有工作区
+        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+            console.log('[SettingsViewProvider] 没有工作区，使用全局配置');
+            return vscode.ConfigurationTarget.Global;
+        }
+        // 如果配置中包含saveToGlobal标志，则保存到全局
+        if (config.saveToGlobal === true) {
+            console.log('[SettingsViewProvider] 用户选择保存到全局配置');
+            return vscode.ConfigurationTarget.Global;
+        }
+        // 默认保存到工作区
+        console.log('[SettingsViewProvider] 保存到当前工作区配置');
+        return vscode.ConfigurationTarget.Workspace;
+    }
+    /**
+     * 标准化路径（处理Windows路径大小写不敏感问题）
+     */
+    normalizePath(path) {
+        if (!path)
+            return '';
+        // Windows路径标准化：转换为小写并统一分隔符
+        if (process.platform === 'win32') {
+            return path.toLowerCase().replace(/\\/g, '/');
+        }
+        // 其他系统保持原样
+        return path.replace(/\\/g, '/');
     }
 }
 exports.SettingsViewProvider = SettingsViewProvider;

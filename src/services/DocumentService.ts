@@ -176,7 +176,13 @@ export class DocumentService {
             }
 
             if (fs.existsSync(localPath)) {
-                return fs.readFileSync(localPath, 'utf-8');
+                console.log(`[DocumentService] 📖 开始读取文件: ${localPath}`);
+                const content = fs.readFileSync(localPath, 'utf-8');
+                console.log(`[DocumentService] ✅ 文件读取成功，内容长度: ${content.length}`);
+                console.log(`[DocumentService] 📝 文件前100字符: "${content.substring(0, 100)}..."`);
+                return content;
+            } else {
+                console.log(`[DocumentService] ❌ 文件不存在: ${localPath}`);
             }
 
             return null;
@@ -193,15 +199,24 @@ export class DocumentService {
      * @returns 解析后的文档信息
      */
     private parseMarkdown(content: string, componentName: string): DocumentInfo {
+        console.log(`[DocumentService] 🔍 开始解析Markdown: ${componentName}`);
+        console.log(`[DocumentService] 📄 内容长度: ${content.length}`);
+        console.log(`[DocumentService] 📝 内容前100字符: "${content.substring(0, 100)}..."`);
+
         const lines = content.split('\n');
         let title = componentName;
         let description = '';
         let props: ComponentProp[] = [];
 
+        console.log(`[DocumentService] 📋 总行数: ${lines.length}`);
+
         // 解析标题
         const titleMatch = content.match(/^#\s+(.+)$/m);
         if (titleMatch) {
             title = titleMatch[1];
+            console.log(`[DocumentService] 📝 提取到标题: "${title}"`);
+        } else {
+            console.log(`[DocumentService] ❌ 未找到标题，使用默认: "${title}"`);
         }
 
         // 解析描述（第一个段落）
@@ -231,16 +246,21 @@ export class DocumentService {
         }
         
         description = descriptionLines.join(' ').substring(0, 200);
+        console.log(`[DocumentService] 📝 提取到描述: "${description}"`);
 
         // 解析Props表格
         props = this.parsePropsTable(content);
+        console.log(`[DocumentService] 📊 解析到Props数量: ${props.length}`);
 
-        return {
+        const result = {
             title,
             description,
             content,
             props
         };
+
+        console.log(`[DocumentService] ✅ 解析完成:`, { title, description: description.substring(0, 50) + '...', propsCount: props.length });
+        return result;
     }
 
     /**

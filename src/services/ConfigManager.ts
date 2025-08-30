@@ -31,16 +31,84 @@ export class ConfigManager {
      * 加载配置
      */
     private loadConfig(): ComponentDocConfig {
+        console.log('[ConfigManager] ========== 开始加载配置 ==========');
+
+        // 获取不同级别的配置
         const workspaceConfig = vscode.workspace.getConfiguration('componentDoc');
 
-        const config = {
+        // 尝试从不同来源获取配置，按优先级排序
+        const config = this.mergeConfigurations(workspaceConfig);
+
+        console.log('[ConfigManager] 最终配置:', config);
+        console.log('[ConfigManager] ========== 配置加载完成 ==========');
+
+        return config;
+    }
+
+    /**
+     * 合并不同来源的配置
+     */
+    private mergeConfigurations(workspaceConfig: vscode.WorkspaceConfiguration): ComponentDocConfig {
+        // 1. 默认配置
+        const defaultConfig: ComponentDocConfig = {
+            basePath: '',
+            mappingRule: {},
+            cacheTimeout: 300000
+        };
+
+        // 2. 全局用户配置
+        const globalConfig = this.getGlobalConfig();
+
+        // 3. 工作区配置
+        const currentConfig = {
             basePath: workspaceConfig.get<string>('basePath', ''),
             mappingRule: workspaceConfig.get<ComponentMappingRule>('mappingRule', {}),
             cacheTimeout: workspaceConfig.get<number>('cacheTimeout', 300000)
         };
 
-        console.log('[ConfigManager] 加载配置:', config);
-        return config;
+        console.log('[ConfigManager] 默认配置:', defaultConfig);
+        console.log('[ConfigManager] 全局配置:', globalConfig);
+        console.log('[ConfigManager] 当前工作区配置:', currentConfig);
+
+        // 按优先级合并配置：当前工作区 > 全局配置 > 默认配置
+        const mergedConfig: ComponentDocConfig = {
+            basePath: currentConfig.basePath || globalConfig.basePath || defaultConfig.basePath,
+            mappingRule: {
+                ...defaultConfig.mappingRule,
+                ...globalConfig.mappingRule,
+                ...currentConfig.mappingRule
+            },
+            cacheTimeout: currentConfig.cacheTimeout || globalConfig.cacheTimeout || defaultConfig.cacheTimeout
+        };
+
+        console.log('[ConfigManager] 合并后配置:', mergedConfig);
+        return mergedConfig;
+    }
+
+    /**
+     * 获取全局配置
+     */
+    private getGlobalConfig(): ComponentDocConfig {
+        try {
+            // 从全局配置中读取
+            const globalWorkspaceConfig = vscode.workspace.getConfiguration('componentDoc', null);
+
+            const globalConfig = {
+                basePath: globalWorkspaceConfig.inspect<string>('basePath')?.globalValue || '',
+                mappingRule: globalWorkspaceConfig.inspect<ComponentMappingRule>('mappingRule')?.globalValue || {},
+                cacheTimeout: globalWorkspaceConfig.inspect<number>('cacheTimeout')?.globalValue || 300000
+            };
+
+            console.log('[ConfigManager] 读取到的全局配置:', globalConfig);
+            return globalConfig;
+        } catch (error) {
+            console.log('[ConfigManager] 读取全局配置失败:', error);
+            return {
+                basePath: '',
+                mappingRule: {},
+                cacheTimeout: 300000
+            };
+        }
     }
 
     /**
@@ -91,7 +159,7 @@ export class ConfigManager {
             return null;
         }
 
-        // 精确匹配
+        // 1. 精确匹配
         console.log(`[ConfigManager] 🔍 尝试精确匹配...`);
         if (mappingRule[componentName]) {
             const docPath = this.joinPath(basePath, mappingRule[componentName]);
@@ -102,9 +170,17 @@ export class ConfigManager {
             const exists = fs.existsSync(docPath);
             console.log(`[ConfigManager] 文件存在性: ${exists}`);
 
-            return docPath;
-        } else {
-            console.log(`[ConfigManager] ❌ 精确匹配失败，组件名 "${componentName}" 不在映射规则中`);
+            if (exists) {
+                return docPath;
+            }
+        }
+
+        // 2. 智能模糊匹配
+        console.log(`[ConfigManager] 🔍 尝试智能模糊匹配...`);
+        const fuzzyMatch = this.findFuzzyMatch(componentName, basePath);
+        if (fuzzyMatch) {
+            console.log(`[ConfigManager] ✅ 模糊匹配成功: ${componentName} -> ${fuzzyMatch}`);
+            return fuzzyMatch;
         }
 
         // 正则表达式匹配
@@ -395,5 +471,112 @@ export class ConfigManager {
             exists: true, // 假设存在
             message: '远程文档URL（无法验证存在性）'
         };
+    }
+
+    /**
+     * 智能模糊匹配
+     * @param componentName 组件名
+     * @param basePath 基础路径
+     * @returns 匹配的文档路径
+     */
+    private findFuzzyMatch(componentName: string, basePath: string): string | null {
+        const fs = require('fs');
+        const path = require('path');
+
+        console.log(`[ConfigManager] 🔍 开始模糊匹配: ${componentName}`);
+
+        // 生成可能的匹配模式
+        const patterns = this.generateMatchPatterns(componentName);
+        console.log(`[ConfigManager] 📋 生成的匹配模式:`, patterns);
+
+        // 搜索目录
+        const searchDirs = ['常用组件', '业务组件'];
+
+        for (const dir of searchDirs) {
+            const dirPath = path.join(basePath, dir);
+            if (!fs.existsSync(dirPath)) {
+                console.log(`[ConfigManager] ❌ 目录不存在: ${dirPath}`);
+                continue;
+            }
+
+            console.log(`[ConfigManager] 🔍 搜索目录: ${dir}`);
+            const files = fs.readdirSync(dirPath);
+
+            for (const pattern of patterns) {
+                for (const file of files) {
+                    if (file.endsWith('.md')) {
+                        const fileName = file.replace('.md', '');
+                        if (this.isMatch(pattern, fileName)) {
+                            const fullPath = path.join(dirPath, file);
+                            console.log(`[ConfigManager] ✅ 找到匹配: ${pattern} -> ${fileName} (${file})`);
+                            return fullPath.replace(/\\/g, '/');
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log(`[ConfigManager] ❌ 模糊匹配失败: ${componentName}`);
+        return null;
+    }
+
+    /**
+     * 生成匹配模式
+     * @param componentName 组件名
+     * @returns 匹配模式数组
+     */
+    private generateMatchPatterns(componentName: string): string[] {
+        const patterns: string[] = [];
+        const lowerName = componentName.toLowerCase();
+
+        // 1. 原始名称（不区分大小写）
+        patterns.push(lowerName);
+
+        // 2. 添加 ou- 前缀
+        patterns.push(`ou-${lowerName}`);
+
+        // 3. 移除可能的前缀
+        if (lowerName.startsWith('ou-')) {
+            patterns.push(lowerName.substring(3));
+        }
+
+        // 4. 驼峰转连字符
+        const kebabCase = lowerName.replace(/([A-Z])/g, '-$1').toLowerCase();
+        if (kebabCase !== lowerName) {
+            patterns.push(kebabCase);
+            patterns.push(`ou-${kebabCase}`);
+        }
+
+        // 5. 连字符转驼峰
+        const camelCase = lowerName.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+        if (camelCase !== lowerName) {
+            patterns.push(camelCase);
+        }
+
+        // 去重
+        return [...new Set(patterns)];
+    }
+
+    /**
+     * 检查是否匹配
+     * @param pattern 匹配模式
+     * @param fileName 文件名
+     * @returns 是否匹配
+     */
+    private isMatch(pattern: string, fileName: string): boolean {
+        const lowerPattern = pattern.toLowerCase();
+        const lowerFileName = fileName.toLowerCase();
+
+        // 完全匹配
+        if (lowerPattern === lowerFileName) {
+            return true;
+        }
+
+        // 包含匹配
+        if (lowerFileName.includes(lowerPattern) || lowerPattern.includes(lowerFileName)) {
+            return true;
+        }
+
+        return false;
     }
 }
