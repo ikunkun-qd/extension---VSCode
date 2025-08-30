@@ -1867,6 +1867,447 @@ function getLocalizedText(key: string): string {
 }
 ```
 
+## 开发和调试指南
+
+### 开发环境搭建
+
+1. **环境要求**
+
+   ```bash
+   Node.js >= 16.0.0
+   npm >= 8.0.0
+   VSCode >= 1.74.0
+   ```
+
+2. **项目初始化**
+
+   ```bash
+   # 克隆项目
+   git clone <repository-url>
+   cd component-doc-helper
+
+   # 安装依赖
+   npm install
+
+   # 编译 TypeScript
+   npm run compile
+
+   # 监听文件变化
+   npm run watch
+   ```
+
+3. **调试配置**
+   ```json
+   // .vscode/launch.json
+   {
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "name": "Extension",
+         "type": "extensionHost",
+         "request": "launch",
+         "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+         "outFiles": ["${workspaceFolder}/out/**/*.js"],
+         "preLaunchTask": "${workspaceFolder}/npm: watch"
+       }
+     ]
+   }
+   ```
+
+### 性能监控和优化
+
+#### 1. 内存使用监控
+
+```typescript
+// 内存使用情况监控
+export class PerformanceMonitor {
+    private static memoryUsage: Map<string, number> = new Map();
+
+    public static trackMemory(operation: string): void {
+        const usage = process.memoryUsage();
+        this.memoryUsage.set(operation, usage.heapUsed);
+
+        if (usage.heapUsed > 100 * 1024 * 1024) { // 100MB
+            console.warn(`[Performance] 内存使用过高: ${operation} - ${Math.round(usage.heapUsed / 1024 / 1024)}MB`);
+        }
+    }
+
+    public static getMemoryReport(): string {
+        const entries = Array.from(this.memoryUsage.entries());
+        return entries.map(([op, mem]) =>
+            `${op}: ${Math.round(mem / 1024 / 1024)}MB`
+        ).join('\n');
+    }
+}
+
+// 在关键操作中使用
+public async getDocumentation(componentName: string): Promise<DocumentInfo | null> {
+    PerformanceMonitor.trackMemory(`getDocumentation-${componentName}-start`);
+
+    try {
+        // ... 文档获取逻辑
+        const result = await this.fetchDocument(docPath);
+
+        PerformanceMonitor.trackMemory(`getDocumentation-${componentName}-end`);
+        return result;
+    } catch (error) {
+        PerformanceMonitor.trackMemory(`getDocumentation-${componentName}-error`);
+        throw error;
+    }
+}
+```
+
+#### 2. 缓存性能优化
+
+```typescript
+// 高级缓存策略
+export class AdvancedCache {
+  private cache: Map<string, CacheItem> = new Map();
+  private accessCount: Map<string, number> = new Map();
+  private maxSize: number = 100;
+
+  public get(key: string): string | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+
+    // 更新访问计数
+    this.accessCount.set(key, (this.accessCount.get(key) || 0) + 1);
+
+    // 检查过期
+    if (Date.now() - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      this.accessCount.delete(key);
+      return null;
+    }
+
+    return item.content;
+  }
+
+  public set(key: string, content: string, ttl: number = 300000): void {
+    // 如果缓存已满，删除最少使用的项
+    if (this.cache.size >= this.maxSize) {
+      this.evictLeastUsed();
+    }
+
+    this.cache.set(key, {
+      content,
+      timestamp: Date.now(),
+      ttl,
+    });
+    this.accessCount.set(key, 1);
+  }
+
+  private evictLeastUsed(): void {
+    let leastUsedKey = "";
+    let minCount = Infinity;
+
+    for (const [key, count] of this.accessCount.entries()) {
+      if (count < minCount) {
+        minCount = count;
+        leastUsedKey = key;
+      }
+    }
+
+    if (leastUsedKey) {
+      this.cache.delete(leastUsedKey);
+      this.accessCount.delete(leastUsedKey);
+    }
+  }
+}
+```
+
+### 测试策略
+
+#### 1. 单元测试示例
+
+```typescript
+// test/ConfigManager.test.ts
+import * as assert from "assert";
+import { ConfigManager } from "../src/services/ConfigManager";
+
+suite("ConfigManager Tests", () => {
+  let configManager: ConfigManager;
+
+  setup(() => {
+    configManager = new ConfigManager();
+  });
+
+  test("应该正确解析精确匹配的组件名", () => {
+    // 模拟配置
+    const mockConfig = {
+      basePath: "/docs",
+      mappingRule: {
+        Button: "button.md",
+        Input: "input.md",
+      },
+      cacheTimeout: 300000,
+    };
+
+    // 设置私有属性（测试用）
+    (configManager as any).config = mockConfig;
+
+    const result = configManager.getDocumentPath("Button");
+    assert.strictEqual(result, "/docs/button.md");
+  });
+
+  test("应该正确处理正则表达式匹配", () => {
+    const mockConfig = {
+      basePath: "/docs",
+      mappingRule: {
+        "/(.*)Table$/": "tables/$1Table.md",
+      },
+      cacheTimeout: 300000,
+    };
+
+    (configManager as any).config = mockConfig;
+
+    const result = configManager.getDocumentPath("SearchTable");
+    assert.strictEqual(result, "/docs/tables/SearchTable.md");
+  });
+
+  test("应该验证配置的有效性", () => {
+    const mockConfig = {
+      basePath: "",
+      mappingRule: {},
+      cacheTimeout: -1,
+    };
+
+    (configManager as any).config = mockConfig;
+
+    const validation = configManager.validateConfig();
+    assert.strictEqual(validation.isValid, false);
+    assert.ok(validation.errors.length > 0);
+  });
+});
+```
+
+#### 2. 集成测试
+
+```typescript
+// test/integration/HoverProvider.test.ts
+import * as vscode from "vscode";
+import { HoverProvider } from "../../src/providers/HoverProvider";
+import { DocumentService } from "../../src/services/DocumentService";
+import { ConfigManager } from "../../src/services/ConfigManager";
+
+suite("HoverProvider Integration Tests", () => {
+  let hoverProvider: HoverProvider;
+  let documentService: DocumentService;
+
+  setup(() => {
+    const configManager = new ConfigManager();
+    documentService = new DocumentService(configManager);
+    hoverProvider = new HoverProvider(documentService);
+  });
+
+  test("应该为有效组件提供悬浮提示", async () => {
+    // 创建模拟文档
+    const document = await vscode.workspace.openTextDocument({
+      content: '<Button type="primary">Click me</Button>',
+      language: "javascriptreact",
+    });
+
+    const position = new vscode.Position(0, 2); // 在 'Button' 上
+
+    const hover = await hoverProvider.provideHover(
+      document,
+      position,
+      new vscode.CancellationTokenSource().token
+    );
+
+    assert.ok(hover !== null);
+    assert.ok(hover.contents.length > 0);
+  });
+});
+```
+
+### 部署和发布流程
+
+#### 1. 自动化构建脚本
+
+```json
+// package.json scripts
+{
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish",
+    "deploy:dev": "vsce package --pre-release",
+    "deploy:prod": "npm run test && npm run package && vsce publish"
+  }
+}
+```
+
+#### 2. CI/CD 配置示例
+
+```yaml
+# .github/workflows/ci.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build extension
+        run: npm run compile
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: extension-vsix
+          path: "*.vsix"
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish to VS Code Marketplace
+        run: npm run publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+```
+
+### 故障排除指南
+
+#### 常见问题和解决方案
+
+1. **悬浮提示不显示**
+
+   ```typescript
+   // 调试步骤
+   console.log("[Debug] 检查文件类型:", document.languageId);
+   console.log("[Debug] 检查组件名提取:", componentName);
+   console.log("[Debug] 检查配置:", configManager.getBasePath());
+   console.log("[Debug] 检查文档路径:", docPath);
+   ```
+
+2. **配置保存失败**
+
+   ```typescript
+   // 权限检查
+   try {
+     await vscode.workspace
+       .getConfiguration("componentDoc")
+       .update("basePath", newPath, vscode.ConfigurationTarget.Workspace);
+   } catch (error) {
+     console.error("配置保存失败:", error);
+     // 尝试保存到全局配置
+     await vscode.workspace
+       .getConfiguration("componentDoc")
+       .update("basePath", newPath, vscode.ConfigurationTarget.Global);
+   }
+   ```
+
+3. **内存泄漏问题**
+   ```typescript
+   // 定期清理缓存
+   setInterval(() => {
+     const now = Date.now();
+     for (const [key, item] of this.cache.entries()) {
+       if (now - item.timestamp > item.ttl) {
+         this.cache.delete(key);
+       }
+     }
+   }, 60000); // 每分钟清理一次
+   ```
+
+### 扩展开发建议
+
+#### 1. 代码质量保证
+
+- 使用 TypeScript 严格模式
+- 配置 ESLint 和 Prettier
+- 编写单元测试和集成测试
+- 使用 Husky 进行 Git hooks
+
+#### 2. 性能优化建议
+
+- 实现智能缓存策略
+- 使用防抖和节流技术
+- 异步操作使用 Promise 和 async/await
+- 避免在主线程进行重计算
+
+#### 3. 用户体验优化
+
+- 提供详细的错误信息
+- 实现加载状态指示
+- 支持键盘快捷键
+- 提供配置向导
+
 ---
 
-**本文档详细描述了组件智能文档提示 VSCode 扩展的完整实现方案，为开发者提供了深入理解和扩展该项目的技术指南。**
+**本文档详细描述了组件智能文档提示 VSCode 扩展的完整实现方案，包含了架构设计、核心算法、配置系统、性能优化、测试策略和部署流程等各个方面，为开发者提供了深入理解和扩展该项目的全面技术指南。**
+
+## 总结
+
+这个 VSCode 扩展项目展示了一个完整的企业级扩展开发案例，具有以下特点：
+
+### 技术亮点
+
+- **模块化架构**: 清晰的分层设计，易于维护和扩展
+- **智能算法**: 多策略组件名识别和路径解析
+- **高性能缓存**: 内存缓存和 LRU 策略优化
+- **用户友好**: 可视化配置界面和详细的错误处理
+- **类型安全**: 完整的 TypeScript 类型定义
+
+### 实用价值
+
+- **开发效率**: 显著提升前端开发中的文档查阅效率
+- **配置灵活**: 支持多种组件库和自定义配置
+- **扩展性强**: 易于添加新功能和支持新框架
+- **维护性好**: 清晰的代码结构和完善的文档
+
+### 学习价值
+
+- VSCode 扩展开发最佳实践
+- TypeScript 企业级项目架构
+- WebView 和原生扩展的交互设计
+- 配置系统和缓存策略实现
+- 错误处理和用户体验优化
+
+这个项目可以作为学习 VSCode 扩展开发的优秀范例，也可以直接用于实际的前端开发工作中。
