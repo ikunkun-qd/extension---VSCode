@@ -99,18 +99,28 @@ class ErrorHandler {
      */
     static validateConfiguration(basePath) {
         if (!basePath || basePath.trim() === '') {
-            this.showWarning('请先配置组件文档的基础路径 (componentDoc.basePath)');
+            this.debug('基础路径未配置，跳过悬浮提示');
             return false;
         }
         // 验证本地路径是否存在
         if (!basePath.startsWith('http://') && !basePath.startsWith('https://')) {
             const fs = require('fs');
+            const path = require('path');
+            const vscode = require('vscode');
             let localPath = basePath;
             if (basePath.startsWith('file://')) {
                 localPath = basePath.substring(7);
             }
+            // 如果是相对路径，需要相对于工作区根目录解析
+            if (!path.isAbsolute(localPath)) {
+                const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (workspaceRoot) {
+                    localPath = path.resolve(workspaceRoot, localPath);
+                    this.debug(`解析相对路径: ${basePath} -> ${localPath}`);
+                }
+            }
             if (!fs.existsSync(localPath)) {
-                this.showWarning(`配置的文档路径不存在: ${localPath}`);
+                this.debug(`配置的文档路径不存在: ${localPath}`);
                 return false;
             }
         }

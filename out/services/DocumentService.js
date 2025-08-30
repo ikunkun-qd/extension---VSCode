@@ -48,7 +48,9 @@ class DocumentService {
         try {
             // 验证配置
             const basePath = this.configManager.getBasePath();
-            if (!ErrorHandler_1.ErrorHandler.validateConfiguration(basePath)) {
+            ErrorHandler_1.ErrorHandler.debug(`获取组件文档: ${componentName}, basePath: ${basePath}`);
+            if (!basePath || basePath.trim() === '') {
+                ErrorHandler_1.ErrorHandler.debug(`basePath未配置，跳过组件: ${componentName}`);
                 return null;
             }
             const docPath = this.configManager.getDocumentPath(componentName);
@@ -66,7 +68,7 @@ class DocumentService {
             // 获取文档内容
             const content = await this.fetchDocument(docPath);
             if (!content) {
-                ErrorHandler_1.ErrorHandler.debug(`文档内容为空: ${componentName}`);
+                ErrorHandler_1.ErrorHandler.debug(`文档内容为空: ${componentName}, 路径: ${docPath}`);
                 return null;
             }
             // 缓存内容
@@ -75,7 +77,7 @@ class DocumentService {
             return this.parseMarkdown(content, componentName);
         }
         catch (error) {
-            ErrorHandler_1.ErrorHandler.showError(`获取组件 ${componentName} 的文档失败`, error);
+            console.error(`获取组件 ${componentName} 的文档失败:`, error);
             return null;
         }
     }
@@ -86,11 +88,19 @@ class DocumentService {
      */
     async getShortDescription(componentName) {
         try {
+            console.log(`[DocumentService] 📖 获取组件简短描述: ${componentName}`);
             const docInfo = await this.getDocumentation(componentName);
-            return docInfo?.description || null;
+            if (docInfo?.description) {
+                console.log(`[DocumentService] ✅ 获取到描述: ${docInfo.description.substring(0, 50)}...`);
+                return docInfo.description;
+            }
+            else {
+                console.log(`[DocumentService] ❌ 未获取到描述: ${componentName}`);
+                return null;
+            }
         }
         catch (error) {
-            console.error(`获取组件描述失败: ${componentName}`, error);
+            console.error(`[DocumentService] ❌ 获取组件描述失败: ${componentName}`, error);
             return null;
         }
     }

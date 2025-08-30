@@ -40,6 +40,21 @@ function activate(context) {
     // 初始化服务
     const configManager = new ConfigManager_1.ConfigManager();
     const documentService = new DocumentService_1.DocumentService(configManager);
+    // 输出当前配置用于调试
+    console.log('[Extension] 当前配置:', {
+        basePath: configManager.getBasePath(),
+        mappingRule: configManager.getMappingRule(),
+        cacheTimeout: configManager.getCacheTimeout()
+    });
+    // 验证配置有效性
+    const configValidation = configManager.validateConfig();
+    if (!configValidation.isValid) {
+        console.error('[Extension] 配置验证失败:', configValidation.errors);
+        vscode.window.showWarningMessage(`组件文档配置有误: ${configValidation.errors.join(', ')}`);
+    }
+    else if (configValidation.warnings.length > 0) {
+        console.warn('[Extension] 配置警告:', configValidation.warnings);
+    }
     // 注册悬停提示提供器
     const hoverProvider = new HoverProvider_1.HoverProvider(documentService);
     const hoverDisposable = vscode.languages.registerHoverProvider([
@@ -78,6 +93,53 @@ function activate(context) {
     const refreshSettingsCommand = vscode.commands.registerCommand('componentDoc.refreshSettings', () => {
         settingsProvider.refresh();
     });
+    // 注册测试配置命令
+    const testConfigCommand = vscode.commands.registerCommand('componentDoc.testConfig', async () => {
+        console.log('[Extension] ========== 开始配置测试 ==========');
+        // 强制重新加载配置
+        configManager.reload();
+        const config = {
+            basePath: configManager.getBasePath(),
+            mappingRule: configManager.getMappingRule(),
+            cacheTimeout: configManager.getCacheTimeout()
+        };
+        console.log('[Extension] 当前配置:', config);
+        console.log('[Extension] 映射规则键:', Object.keys(config.mappingRule));
+        // 测试多个组件
+        try {
+            const testComponents = ['Button', 'ou-search-table', 'SearchTable'];
+            const results = [];
+            for (const componentName of testComponents) {
+                console.log(`[Extension] 测试组件: ${componentName}`);
+                // 测试路径解析
+                const docPath = configManager.getDocumentPath(componentName);
+                console.log(`[Extension] 解析路径: ${componentName} -> ${docPath}`);
+                // 测试文档获取
+                const doc = await documentService.getShortDescription(componentName);
+                const result = `${componentName}: ${doc ? doc.substring(0, 50) + '...' : '未找到'}`;
+                results.push(result);
+                console.log(`[Extension] 结果: ${result}`);
+            }
+            console.log('[Extension] ========== 配置测试完成 ==========');
+            vscode.window.showInformationMessage(`配置测试结果:\n路径: ${config.basePath}\n${results.join('\n')}`);
+        }
+        catch (error) {
+            console.error('[Extension] 配置测试异常:', error);
+            vscode.window.showErrorMessage(`配置测试失败: ${error}`);
+        }
+    });
+    // 注册强制重新加载配置命令
+    const forceReloadCommand = vscode.commands.registerCommand('componentDoc.forceReload', () => {
+        console.log('[Extension] 强制重新加载配置');
+        configManager.reload();
+        const newConfig = {
+            basePath: configManager.getBasePath(),
+            mappingRule: configManager.getMappingRule(),
+            cacheTimeout: configManager.getCacheTimeout()
+        };
+        console.log('[Extension] 重新加载后的配置:', newConfig);
+        vscode.window.showInformationMessage('配置已强制重新加载');
+    });
     // 创建状态栏按钮
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.text = "$(gear) 组件文档设置";
@@ -92,7 +154,7 @@ function activate(context) {
         }
     });
     // 添加到上下文订阅
-    context.subscriptions.push(hoverDisposable, settingsViewDisposable, showDocCommand, openSettingsCommand, toggleSettingsPanelCommand, refreshSettingsCommand, statusBarItem, configChangeDisposable);
+    context.subscriptions.push(hoverDisposable, settingsViewDisposable, showDocCommand, openSettingsCommand, toggleSettingsPanelCommand, refreshSettingsCommand, testConfigCommand, forceReloadCommand, statusBarItem, configChangeDisposable);
 }
 exports.activate = activate;
 /**

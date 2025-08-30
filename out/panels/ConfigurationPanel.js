@@ -65,7 +65,9 @@ class ConfigurationPanel {
         this._panel.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'saveConfig':
-                    this._saveConfiguration(message.config);
+                    this._saveConfiguration(message.config).catch(error => {
+                        console.error('[ConfigurationPanel] 保存配置异常:', error);
+                    });
                     return;
                 case 'loadConfig':
                     this._reloadConfiguration();
@@ -114,15 +116,19 @@ class ConfigurationPanel {
         const webview = this._panel.webview;
         this._panel.webview.html = this._getHtmlForWebview(webview);
     }
-    _saveConfiguration(config) {
+    async _saveConfiguration(config) {
         try {
+            console.log('[ConfigurationPanel] 开始保存配置:', config);
             // 更新VSCode配置
             const workspaceConfig = vscode.workspace.getConfiguration('componentDoc');
-            workspaceConfig.update('basePath', config.basePath, vscode.ConfigurationTarget.Workspace);
-            workspaceConfig.update('mappingRule', config.mappingRule, vscode.ConfigurationTarget.Workspace);
-            workspaceConfig.update('cacheTimeout', config.cacheTimeout, vscode.ConfigurationTarget.Workspace);
+            // 使用await确保配置更新完成
+            await workspaceConfig.update('basePath', config.basePath, vscode.ConfigurationTarget.Workspace);
+            await workspaceConfig.update('mappingRule', config.mappingRule, vscode.ConfigurationTarget.Workspace);
+            await workspaceConfig.update('cacheTimeout', config.cacheTimeout, vscode.ConfigurationTarget.Workspace);
+            console.log('[ConfigurationPanel] VSCode配置已更新');
             // 重新加载配置管理器
             this._configManager.reload();
+            console.log('[ConfigurationPanel] 配置管理器已重新加载');
             // 发送成功消息到webview
             this._panel.webview.postMessage({
                 command: 'configSaved',

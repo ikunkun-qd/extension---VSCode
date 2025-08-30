@@ -1,8 +1,8 @@
 {
   "name": "component-doc-helper",
   "displayName": "组件智能文档提示",
-  "description": "为前端组件库提供智能文档提示和侧边栏文档视图",
-  "version": "0.0.1",
+  "description": "为前端组件库提供智能文档悬浮提示的VSCode扩展，支持React、Vue等多种框架，提供可视化配置界面",
+  "version": "1.0.0",
   "publisher": "component-doc-team",
   "author": {
     "name": "Component Doc Team"

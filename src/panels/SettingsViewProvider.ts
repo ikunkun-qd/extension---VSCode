@@ -38,7 +38,9 @@ export class SettingsViewProvider implements vscode.WebviewViewProvider {
             message => {
                 switch (message.command) {
                     case 'saveConfig':
-                        this._saveConfiguration(message.config);
+                        this._saveConfiguration(message.config).catch(error => {
+                            console.error('[SettingsViewProvider] 保存配置异常:', error);
+                        });
                         return;
                     case 'loadConfig':
                         this._reloadConfiguration();
@@ -63,16 +65,51 @@ export class SettingsViewProvider implements vscode.WebviewViewProvider {
         this._loadConfiguration();
     }
 
-    private _saveConfiguration(config: any): void {
+    private async _saveConfiguration(config: any): Promise<void> {
         try {
+            console.log('[SettingsViewProvider] 开始保存配置:', config);
+            console.log('[SettingsViewProvider] 保存前的当前配置:', {
+                basePath: vscode.workspace.getConfiguration('componentDoc').get('basePath'),
+                mappingRule: vscode.workspace.getConfiguration('componentDoc').get('mappingRule')
+            });
+
             // 更新VSCode配置
             const workspaceConfig = vscode.workspace.getConfiguration('componentDoc');
-            workspaceConfig.update('basePath', config.basePath, vscode.ConfigurationTarget.Workspace);
-            workspaceConfig.update('mappingRule', config.mappingRule, vscode.ConfigurationTarget.Workspace);
-            workspaceConfig.update('cacheTimeout', config.cacheTimeout, vscode.ConfigurationTarget.Workspace);
+
+            // 尝试保存到工作区，如果失败则保存到全局
+            let configTarget = vscode.ConfigurationTarget.Workspace;
+
+            // 检查是否有工作区
+            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                configTarget = vscode.ConfigurationTarget.Global;
+                console.log('[SettingsViewProvider] 没有工作区，使用全局配置');
+            }
+
+            await workspaceConfig.update('basePath', config.basePath, configTarget);
+            await workspaceConfig.update('mappingRule', config.mappingRule, configTarget);
+            await workspaceConfig.update('cacheTimeout', config.cacheTimeout, configTarget);
+
+            console.log('[SettingsViewProvider] 配置已更新到VSCode设置');
 
             // 重新加载配置管理器
             this._configManager.reload();
+            console.log('[SettingsViewProvider] 配置管理器已重新加载');
+
+            // 验证配置是否真的保存了
+            const savedConfig = vscode.workspace.getConfiguration('componentDoc');
+            const verifyBasePath = savedConfig.get('basePath');
+            const verifyMappingRule = savedConfig.get('mappingRule');
+
+            console.log('[SettingsViewProvider] 验证保存的配置:', {
+                basePath: verifyBasePath,
+                mappingRule: verifyMappingRule
+            });
+
+            // 检查配置是否真的更新了
+            if (verifyBasePath !== config.basePath) {
+                console.error('[SettingsViewProvider] 配置保存失败！期望:', config.basePath, '实际:', verifyBasePath);
+                throw new Error(`配置保存失败：期望 ${config.basePath}，但实际保存的是 ${verifyBasePath}`);
+            }
 
             // 发送成功消息到webview
             this._view?.webview.postMessage({
@@ -83,6 +120,8 @@ export class SettingsViewProvider implements vscode.WebviewViewProvider {
 
             vscode.window.showInformationMessage('组件文档配置已保存');
         } catch (error) {
+            console.error('[SettingsViewProvider] 保存配置失败:', error);
+
             // 发送错误消息到webview
             this._view?.webview.postMessage({
                 command: 'configSaved',
@@ -248,36 +287,52 @@ export class SettingsViewProvider implements vscode.WebviewViewProvider {
                 cacheTimeout: 300000
             },
             'ouryun': {
-                basePath: '',
+                basePath: 'D:\\Front_end\\前端项目\\shixi\\ouryun-design\\docs\\zh-CN\\components\\ouryun-plus',
                 mappingRule: {
-                    // 常用组件映射
+                    // 常用组件映射（根据实际文档结构）
                     'Button': '常用组件/button.md',
                     'Input': '常用组件/input.md',
                     'Table': '常用组件/table.md',
                     'Form': '常用组件/form.md',
                     'Modal': '常用组件/modal.md',
                     'Select': '常用组件/select.md',
+                    'SelectV2': '常用组件/selectV2.md',
                     'DatePicker': '常用组件/datePicker.md',
                     'Upload': '常用组件/upload.md',
                     'Tree': '常用组件/tree.md',
+                    'TreeSelect': '常用组件/treeSelect.md',
                     'Pagination': '常用组件/pagination.md',
                     'Tabs': '常用组件/tabs.md',
                     'Switch': '常用组件/switch.md',
                     'Radio': '常用组件/radio.md',
                     'Checkbox': '常用组件/checkbox.md',
                     'Tooltip': '常用组件/tooltip.md',
+                    'TooltipIcon': '常用组件/tooltipIcon.md',
                     'Drawer': '常用组件/drawer.md',
                     'Loading': '常用组件/loading.md',
                     'Tag': '常用组件/tag.md',
+                    'TagGroup': '常用组件/tagGroup.md',
                     'Icon': '常用组件/Icon.md',
+                    'IconGroup': '常用组件/iconGroup.md',
                     'Image': '常用组件/image.md',
                     'Cascader': '常用组件/cascader.md',
                     'TimePicker': '常用组件/timePicker.md',
                     'Watermark': '常用组件/watermark.md',
+                    'PasswordInput': '常用组件/passwordInput.md',
+                    'InputSelect': '常用组件/inputSelect.md',
+                    'PopoverButton': '常用组件/popoverButton.md',
+                    'DropDown': '常用组件/dropDown.md',
+                    'StatusText': '常用组件/statusText.md',
+                    'Scrollbar': '常用组件/scrollbar.md',
+                    'AddBar': '常用组件/addBar.md',
+                    'ConfirmDialog': '常用组件/confirmDialog.md',
+                    'OperaDialog': '常用组件/operaDialog.md',
 
-                    // 业务组件映射
+                    // 业务组件映射（根据实际文档结构）
                     'SearchTable': '业务组件/searchTable.md',
+                    'ou-search-table': '业务组件/searchTable.md',
                     'PageSelect': '业务组件/pageSelect.md',
+                    'ou-page-select': '业务组件/pageSelect.md',
                     'JsonTree': '业务组件/jsonTree.md',
                     'LinkTable': '业务组件/linkTable.md',
                     'RankTable': '业务组件/rankTable.md',
@@ -288,12 +343,21 @@ export class SettingsViewProvider implements vscode.WebviewViewProvider {
                     'AutocompleteInput': '业务组件/autocompleteInput.md',
                     'MultilineEditor': '业务组件/multilineEditor.md',
                     'CascadeEditor': '业务组件/cascadeEditor.md',
+                    'CascadeEditorM': '业务组件/cascadeEditorM.md',
                     'TextArea': '业务组件/textArea.md',
                     'TextEllipsis': '业务组件/textEllipsis.md',
                     'Transfer': '业务组件/transfer.md',
                     'Progress': '业务组件/progress.md',
                     'Lottie': '业务组件/lottie.md',
                     'Echarts': '业务组件/echarts.md',
+                    'BasicInfo': '业务组件/BasicInfo.md',
+                    'CollapsePanel': '业务组件/collapsePanel.md',
+                    'DetailCollapse': '业务组件/detailCollapse.md',
+                    'DocumentTemplate': '业务组件/documentTemplate.md',
+                    'InterfaceDetail': '业务组件/interfaceDetail2.0.md',
+                    'PopverTree': '业务组件/popverTree.md',
+                    'SelectFiltrate': '业务组件/select-filtrate.md',
+                    'SelectForm': '业务组件/select-form.md',
 
                     // 通用正则规则（递归搜索会自动处理）
                     '/(.*)/': '$1.md'

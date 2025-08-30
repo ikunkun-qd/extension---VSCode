@@ -25,32 +25,61 @@ export class HoverProvider implements vscode.HoverProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | null> {
         try {
-            // 解析组件名
-            const componentName = this.extractComponentName(document, position);
-            if (!componentName) {
+            console.log(`[HoverProvider] ========== 悬停请求开始 ==========`);
+            console.log(`[HoverProvider] 文件: ${document.fileName}`);
+            console.log(`[HoverProvider] 位置: ${position.line}:${position.character}`);
+            console.log(`[HoverProvider] 文档语言: ${document.languageId}`);
+
+            // 获取当前行内容
+            const line = document.lineAt(position.line);
+            console.log(`[HoverProvider] 当前行内容: "${line.text}"`);
+            console.log(`[HoverProvider] 光标字符: "${line.text[position.character] || 'EOF'}"`);
+
+            // 检查文件类型是否支持
+            const supportedLanguages = ['javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'vue'];
+            if (!supportedLanguages.includes(document.languageId)) {
+                console.log(`[HoverProvider] ❌ 不支持的文件类型: ${document.languageId}`);
                 return null;
             }
 
+            // 解析组件名
+            console.log(`[HoverProvider] 🔍 开始提取组件名...`);
+            const componentName = this.extractComponentName(document, position);
+            if (!componentName) {
+                console.log(`[HoverProvider] ❌ 未提取到组件名`);
+                return null;
+            }
+
+            console.log(`[HoverProvider] ✅ 提取到组件名: "${componentName}"`);
+
             // 检查取消令牌
             if (token.isCancellationRequested) {
+                console.log(`[HoverProvider] ❌ 请求已取消`);
                 return null;
             }
 
             // 获取组件描述
+            console.log(`[HoverProvider] 📖 开始获取组件描述: ${componentName}`);
             const description = await this.documentService.getShortDescription(componentName);
             if (!description) {
+                console.log(`[HoverProvider] ❌ 未获取到组件描述: ${componentName}`);
                 return null;
             }
 
+            console.log(`[HoverProvider] ✅ 获取到组件描述: ${componentName} - ${description.substring(0, 50)}...`);
+
             // 构建悬停内容
             const hoverContent = this.buildHoverContent(componentName, description);
-            
+
             // 获取组件名的范围
             const range = this.getComponentNameRange(document, position, componentName);
-            
+
+            console.log(`[HoverProvider] ✅ 成功创建悬停提示: ${componentName}`);
+            console.log(`[HoverProvider] ========== 悬停请求结束 ==========`);
             return new vscode.Hover(hoverContent, range);
         } catch (error) {
-            console.error('提供悬停提示时出错:', error);
+            console.error('[HoverProvider] ❌ 提供悬停提示时出错:', error);
+            console.log(`[HoverProvider] ========== 悬停请求异常结束 ==========`);
             return null;
         }
     }
@@ -66,46 +95,71 @@ export class HoverProvider implements vscode.HoverProvider {
         const text = line.text;
         const offset = position.character;
 
-        // 匹配JSX/Vue组件标签
-        const patterns = [
-            // JSX组件: <ComponentName>, </ComponentName>
-            /<\/?([A-Z][a-zA-Z0-9]*)/g,
-            // Vue组件: <component-name>, <ComponentName>
-            /<\/?([a-z][a-z0-9-]*[a-z0-9]|[A-Z][a-zA-Z0-9]*)/g,
-            // 自闭合标签: <ComponentName />
-            /<([A-Z][a-zA-Z0-9]*)\s*\/>/g
-        ];
+        console.log(`[HoverProvider] 🔍 提取组件名开始`);
+        console.log(`[HoverProvider] 行内容: "${text}"`);
+        console.log(`[HoverProvider] 光标位置: ${offset}`);
+        console.log(`[HoverProvider] 光标前后字符: "${text.substring(Math.max(0, offset-5), offset+5)}"`);
 
-        for (const pattern of patterns) {
-            let match;
-            pattern.lastIndex = 0; // 重置正则表达式状态
-            
-            while ((match = pattern.exec(text)) !== null) {
-                const startPos = match.index + 1; // 跳过 '<' 字符
-                const endPos = startPos + match[1].length;
-                
-                // 检查光标是否在组件名范围内
-                if (offset >= startPos && offset <= endPos) {
-                    return match[1];
-                }
+        // 获取光标位置的单词
+        const wordRange = document.getWordRangeAtPosition(position);
+        if (wordRange) {
+            const word = document.getText(wordRange);
+            console.log(`[HoverProvider] 📝 光标位置的单词: "${word}"`);
+
+            // 检查是否是组件名（首字母大写或包含连字符）
+            if (/^[A-Z][a-zA-Z0-9]*$/.test(word)) {
+                console.log(`[HoverProvider] ✅ 识别为大写组件名: ${word}`);
+                return word;
+            }
+            if (/^[a-z]+-[a-z-]+$/.test(word)) {
+                console.log(`[HoverProvider] ✅ 识别为连字符组件名: ${word}`);
+                return word;
+            }
+            console.log(`[HoverProvider] ❌ 单词不符合组件名规则: ${word}`);
+        } else {
+            console.log(`[HoverProvider] ❌ 光标位置没有单词`);
+        }
+
+        // 扩展的组件名匹配模式 - 包括自闭合标签
+        console.log(`[HoverProvider] 🔍 尝试正则表达式匹配...`);
+        const componentPattern = /<\/?([A-Z][a-zA-Z0-9]*|[a-z]+-[a-z-]+)(?:\s|\/?>|$)/g;
+
+        let match;
+        componentPattern.lastIndex = 0; // 重置正则表达式状态
+        while ((match = componentPattern.exec(text)) !== null) {
+            const componentName = match[1];
+            const startPos = match.index + 1; // 跳过 '<' 或 '</' 字符
+            const endPos = startPos + componentName.length;
+
+            console.log(`[HoverProvider] 🎯 找到组件: "${componentName}", 位置: ${startPos}-${endPos}, 光标: ${offset}`);
+
+            // 检查光标是否在组件名范围内（增加容错范围）
+            if (offset >= startPos - 1 && offset <= endPos + 1) {
+                console.log(`[HoverProvider] ✅ 匹配到组件名: ${componentName}`);
+                return componentName;
             }
         }
 
         // 尝试匹配导入语句中的组件名
+        console.log(`[HoverProvider] 🔍 尝试导入语句匹配...`);
         const importMatch = text.match(/import\s+.*\{([^}]+)\}/);
         if (importMatch) {
+            console.log(`[HoverProvider] 📦 找到导入语句: ${importMatch[0]}`);
             const imports = importMatch[1].split(',').map(s => s.trim());
             for (const imp of imports) {
                 const componentName = imp.replace(/\s+as\s+\w+/, '').trim();
                 const startIndex = text.indexOf(componentName);
                 const endIndex = startIndex + componentName.length;
-                
-                if (offset >= startIndex && offset <= endIndex) {
+
+                console.log(`[HoverProvider] 📦 检查导入组件: "${componentName}", 位置: ${startIndex}-${endIndex}`);
+                if (offset >= startIndex && offset <= endIndex && startIndex !== -1) {
+                    console.log(`[HoverProvider] ✅ 从导入语句匹配到组件名: ${componentName}`);
                     return componentName;
                 }
             }
         }
 
+        console.log(`[HoverProvider] ❌ 未找到任何组件名`);
         return null;
     }
 

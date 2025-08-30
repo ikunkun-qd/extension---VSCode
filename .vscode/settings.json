@@ -1,10 +1,23 @@
 {
-  "componentDoc.basePath": "D:/Front_end/前端项目/extension - VSCode/example-docs",
+  "componentDoc.basePath": "D:/Front_end/前端项目/shixi/ouryun-design/docs/zh-CN/components/ouryun-plus",
   "componentDoc.mappingRule": {
-    "Button": "Button.md",
-    "Input": "Input.md",
-    "Card": "Card.md",
-    "/(.*)/": "$1.md"
+    "Button": "常用组件/button.md",
+    "Input": "常用组件/input.md",
+    "Table": "常用组件/table.md",
+    "Form": "常用组件/form.md",
+    "Modal": "常用组件/modal.md",
+    "Select": "常用组件/select.md",
+    "SearchTable": "业务组件/searchTable.md",
+    "PageSelect": "业务组件/pageSelect.md",
+    "JsonTree": "业务组件/jsonTree.md",
+    "DragUpload": "业务组件/dragUpload.md",
+    "AutocompleteInput": "业务组件/autocompleteInput.md",
+    "ou-search-table": "业务组件/searchTable.md",
+    "ou-page-select": "业务组件/pageSelect.md",
+    "/(.*)Table$/": "业务组件/$1Table.md",
+    "/(.*)Upload$/": "业务组件/$1Upload.md",
+    "/^ou-(.*)$/": "常用组件/$1.md",
+    "/(.*)/": "常用组件/$1.md"
   },
   "componentDoc.cacheTimeout": 300000
 }

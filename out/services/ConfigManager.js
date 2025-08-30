@@ -38,11 +38,13 @@ class ConfigManager {
      */
     loadConfig() {
         const workspaceConfig = vscode.workspace.getConfiguration('componentDoc');
-        return {
+        const config = {
             basePath: workspaceConfig.get('basePath', ''),
             mappingRule: workspaceConfig.get('mappingRule', {}),
             cacheTimeout: workspaceConfig.get('cacheTimeout', 300000)
         };
+        console.log('[ConfigManager] 加载配置:', config);
+        return config;
     }
     /**
      * 重新加载配置
@@ -76,25 +78,54 @@ class ConfigManager {
     getDocumentPath(componentName) {
         const mappingRule = this.config.mappingRule;
         const basePath = this.config.basePath;
+        console.log(`[ConfigManager] ========== 获取文档路径开始 ==========`);
+        console.log(`[ConfigManager] 组件名: "${componentName}"`);
+        console.log(`[ConfigManager] basePath: "${basePath}"`);
+        console.log(`[ConfigManager] mappingRule keys: [${Object.keys(mappingRule).join(', ')}]`);
+        console.log(`[ConfigManager] mappingRule:`, mappingRule);
         if (!basePath) {
+            console.log(`[ConfigManager] ❌ basePath 为空`);
             return null;
         }
         // 精确匹配
+        console.log(`[ConfigManager] 🔍 尝试精确匹配...`);
         if (mappingRule[componentName]) {
-            return this.joinPath(basePath, mappingRule[componentName]);
+            const docPath = this.joinPath(basePath, mappingRule[componentName]);
+            console.log(`[ConfigManager] ✅ 精确匹配: ${componentName} -> ${mappingRule[componentName]} -> ${docPath}`);
+            // 检查文件是否存在
+            const fs = require('fs');
+            const exists = fs.existsSync(docPath);
+            console.log(`[ConfigManager] 文件存在性: ${exists}`);
+            return docPath;
+        }
+        else {
+            console.log(`[ConfigManager] ❌ 精确匹配失败，组件名 "${componentName}" 不在映射规则中`);
         }
         // 正则表达式匹配
+        console.log(`[ConfigManager] 开始正则表达式匹配`);
         for (const [pattern, replacement] of Object.entries(mappingRule)) {
             if (pattern.startsWith('/') && pattern.endsWith('/')) {
-                const regex = new RegExp(pattern.slice(1, -1));
-                const match = componentName.match(regex);
-                if (match) {
-                    let docPath = replacement;
-                    // 替换捕获组
-                    match.forEach((group, index) => {
-                        docPath = docPath.replace(new RegExp(`\\$${index}`, 'g'), group);
-                    });
-                    return this.joinPath(basePath, docPath);
+                try {
+                    const regex = new RegExp(pattern.slice(1, -1));
+                    const match = componentName.match(regex);
+                    console.log(`[ConfigManager] 测试正则: ${pattern} 对 ${componentName}, 匹配: ${!!match}`);
+                    if (match) {
+                        let docPath = replacement;
+                        // 替换捕获组
+                        match.forEach((group, index) => {
+                            docPath = docPath.replace(new RegExp(`\\$${index}`, 'g'), group);
+                        });
+                        const fullPath = this.joinPath(basePath, docPath);
+                        console.log(`[ConfigManager] 正则匹配: ${pattern} -> ${docPath} -> ${fullPath}`);
+                        // 检查文件是否存在
+                        const fs = require('fs');
+                        const exists = fs.existsSync(fullPath);
+                        console.log(`[ConfigManager] 正则匹配文件存在性: ${exists}`);
+                        return fullPath;
+                    }
+                }
+                catch (error) {
+                    console.log(`[ConfigManager] 正则表达式错误: ${pattern} - ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
         }
@@ -212,7 +243,23 @@ class ConfigManager {
      */
     normalizeLocalPath(basePath, relativePath) {
         const path = require('path');
-        return path.resolve(basePath, relativePath);
+        console.log(`[ConfigManager] normalizeLocalPath - basePath: ${basePath}, relativePath: ${relativePath}`);
+        // 如果basePath是相对路径，需要相对于工作区根目录解析
+        let resolvedBasePath = basePath;
+        if (!path.isAbsolute(basePath)) {
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (workspaceRoot) {
+                resolvedBasePath = path.resolve(workspaceRoot, basePath);
+                console.log(`[ConfigManager] 相对路径解析: ${basePath} -> ${resolvedBasePath}`);
+            }
+        }
+        const finalPath = path.resolve(resolvedBasePath, relativePath);
+        console.log(`[ConfigManager] 最终路径: ${finalPath}`);
+        // 验证路径存在性
+        const fs = require('fs');
+        const exists = fs.existsSync(finalPath);
+        console.log(`[ConfigManager] 路径存在性: ${exists}`);
+        return finalPath;
     }
     /**
      * 验证配置是否有效
